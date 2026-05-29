@@ -1,0 +1,1803 @@
+<!DOCTYPE html>
+<html lang="es" class="">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dashboard de Flota · Gestión Logística</title>
+
+<!-- Tailwind CSS Play CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Inter', 'system-ui', 'sans-serif']
+        },
+        colors: {
+          brand: {
+            50:  '#eef2ff',
+            100: '#e0e7ff',
+            500: '#6366f1',
+            600: '#4f46e5',
+            700: '#4338ca'
+          }
+        }
+      }
+    }
+  }
+</script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<!-- Inter font -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+  * { font-family: 'Inter', system-ui, sans-serif; }
+  /* Scrollbar fino */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(100,116,139,0.4); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,0.6); }
+
+  /* Animaciones suaves */
+  .fade-in { animation: fadeIn 0.25s ease-out; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  .slide-in { animation: slideIn 0.3s ease-out; }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: translateX(0); } }
+
+  /* Celda editable */
+  .editable-cell:focus { outline: 2px solid #6366f1; outline-offset: -2px; border-radius: 4px; }
+
+  /* Toast */
+  .toast {
+    animation: toastIn 0.3s ease-out, toastOut 0.3s ease-out 2.7s forwards;
+  }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes toastOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(8px); } }
+</style>
+</head>
+
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 min-h-screen antialiased">
+
+<!-- ===================== LAYOUT ===================== -->
+<div class="flex min-h-screen">
+
+  <!-- ===================== SIDEBAR ===================== -->
+  <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col transition-transform -translate-x-full lg:translate-x-0">
+
+    <!-- Logo -->
+    <div class="p-5 border-b border-slate-200 dark:border-slate-800">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white font-bold text-lg shadow-md">🚚</div>
+        <div>
+          <h1 class="font-bold text-slate-900 dark:text-white text-base leading-tight">FleetPanel</h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Gestión logística</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="flex-1 p-3 space-y-1">
+      <p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-3 py-2">Principal</p>
+      <button data-tab="overview" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+        Overview
+      </button>
+      <button data-tab="datos" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z M9 4v16 M4 10h16"/></svg>
+        Datos
+      </button>
+      <button data-tab="graficos" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
+        Gráficos
+      </button>
+
+      <p class="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-3 py-2 mt-4">Sistema</p>
+      <button data-tab="config" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        Configuración
+      </button>
+    </nav>
+
+    <!-- Dark mode toggle -->
+    <div class="p-3 border-t border-slate-200 dark:border-slate-800">
+      <button id="theme-toggle" class="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+        <span class="flex items-center gap-2">
+          <svg id="theme-icon-light" class="w-4 h-4 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+          <svg id="theme-icon-dark" class="w-4 h-4 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+          <span id="theme-label">Modo oscuro</span>
+        </span>
+        <span class="text-xs text-slate-500 dark:text-slate-400">⌘D</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Backdrop mobile -->
+  <div id="sidebar-backdrop" class="fixed inset-0 bg-black/50 z-30 hidden lg:hidden"></div>
+
+  <!-- ===================== MAIN ===================== -->
+  <main class="flex-1 min-w-0 lg:ml-0">
+
+    <!-- Top bar -->
+    <header class="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-slate-200 dark:border-slate-800">
+      <div class="flex items-center justify-between px-4 lg:px-8 py-3">
+        <div class="flex items-center gap-3">
+          <button id="sidebar-toggle" class="lg:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+          </button>
+          <h2 id="page-title" class="text-xl font-bold text-slate-900 dark:text-white">Overview</h2>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs text-slate-600 dark:text-slate-400">
+            <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+            <span id="record-count">0 registros</span>
+          </div>
+          <button onclick="exportData()" class="hidden sm:flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Exportar
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ===================== OVERVIEW ===================== -->
+    <section id="tab-overview" class="tab-section p-4 lg:p-8 fade-in">
+      <div class="mb-6">
+        <h3 class="text-2xl font-bold text-slate-900 dark:text-white">Panorama operativo</h3>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Indicadores clave de la flota fija — actualizados en tiempo real</p>
+      </div>
+
+      <!-- KPI cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total flota</span>
+            <div class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400">🚛</div>
+          </div>
+          <div class="text-3xl font-bold text-slate-900 dark:text-white" id="kpi-total">0</div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-2"><span id="kpi-activos">0</span> activos · <span id="kpi-inactivos">0</span> inactivos</p>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Flete promedio</span>
+            <div class="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-amber-600 dark:text-amber-400">💰</div>
+          </div>
+          <div class="text-3xl font-bold text-slate-900 dark:text-white">Gs. <span id="kpi-flete">0</span></div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">por viaje · activos viables</p>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Ocupación</span>
+            <div class="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">📊</div>
+          </div>
+          <div class="text-3xl font-bold text-slate-900 dark:text-white"><span id="kpi-ocupacion">0</span>%</div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">promedio sobre capacidad</p>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Clientes/viaje</span>
+            <div class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-indigo-600 dark:text-indigo-400">👥</div>
+          </div>
+          <div class="text-3xl font-bold text-slate-900 dark:text-white" id="kpi-clientes">0</div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">promedio por viaje</p>
+        </div>
+      </div>
+
+      <!-- Comparativa UNI vs EMP destacada -->
+      <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm mb-6">
+        <h4 class="text-base font-bold text-slate-900 dark:text-white mb-4">Comparativa Unipersonal vs Empresa</h4>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="p-4 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase">Unipersonal</span>
+              <span class="text-2xl font-bold text-emerald-700 dark:text-emerald-400" id="uni-count">0</span>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-xs">
+              <div><span class="text-slate-500 dark:text-slate-400">Flete</span><div class="font-bold text-slate-900 dark:text-white" id="uni-flete">Gs. 0</div></div>
+              <div><span class="text-slate-500 dark:text-slate-400">Ocup.</span><div class="font-bold text-slate-900 dark:text-white" id="uni-ocup">0%</div></div>
+              <div><span class="text-slate-500 dark:text-slate-400">Cli/viaje</span><div class="font-bold text-slate-900 dark:text-white" id="uni-cli">0</div></div>
+            </div>
+          </div>
+          <div class="p-4 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-indigo-700 dark:text-indigo-400 uppercase">Empresa</span>
+              <span class="text-2xl font-bold text-indigo-700 dark:text-indigo-400" id="emp-count">0</span>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-xs">
+              <div><span class="text-slate-500 dark:text-slate-400">Flete</span><div class="font-bold text-slate-900 dark:text-white" id="emp-flete">Gs. 0</div></div>
+              <div><span class="text-slate-500 dark:text-slate-400">Ocup.</span><div class="font-bold text-slate-900 dark:text-white" id="emp-ocup">0%</div></div>
+              <div><span class="text-slate-500 dark:text-slate-400">Cli/viaje</span><div class="font-bold text-slate-900 dark:text-white" id="emp-cli">0</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="mt-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+          <p class="text-xs text-amber-800 dark:text-amber-300">
+            <span class="font-bold">Brecha de flete EMP vs UNI:</span> <span id="overview-brecha" class="font-bold">0%</span> · A misma ocupación, EMPRESA cobra <span id="overview-extra">0</span> Gs. más por viaje.
+          </p>
+        </div>
+      </div>
+
+      <!-- Mini charts -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <h4 class="text-sm font-bold text-slate-900 dark:text-white mb-4">Distribución por CD</h4>
+          <div class="h-64"><canvas id="chart-mini-cd"></canvas></div>
+        </div>
+        <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <h4 class="text-sm font-bold text-slate-900 dark:text-white mb-4">Estado de la flota</h4>
+          <div class="h-64"><canvas id="chart-mini-estado"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== DATOS ===================== -->
+    <section id="tab-datos" class="tab-section p-4 lg:p-8 fade-in hidden">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+        <div>
+          <h3 class="text-2xl font-bold text-slate-900 dark:text-white">Registro de flota</h3>
+          <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Tabla editable · cambios se guardan automáticamente</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="openAddModal()" class="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg shadow-sm transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Agregar camión
+          </button>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm mb-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div class="lg:col-span-2">
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Búsqueda</label>
+            <div class="relative">
+              <svg class="absolute left-3 top-2.5 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              <input id="filter-search" type="text" placeholder="Patente, propietario, operador..." class="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">CD</label>
+            <select id="filter-cd" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="">Todos</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Tipo</label>
+            <select id="filter-tipo" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="">Todos</option>
+              <option value="UNIPERSONAL">Unipersonal</option>
+              <option value="EMPRESA">Empresa</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Estado</label>
+            <select id="filter-estado" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="">Todos</option>
+              <option value="ACTIVO">Activo</option>
+              <option value="INACTIVO">Inactivo</option>
+            </select>
+          </div>
+        </div>
+        <div class="flex items-center justify-between mt-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+          <span class="text-xs text-slate-500 dark:text-slate-400">Mostrando <span id="filter-count" class="font-semibold">0</span> de <span id="filter-total" class="font-semibold">0</span> registros</span>
+          <button onclick="clearFilters()" class="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline">Limpiar filtros</button>
+        </div>
+      </div>
+
+      <!-- Tabla -->
+      <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+              <tr>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Patente</th>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Propietario</th>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">CD</th>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Operador</th>
+                <th class="text-left px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Tipo</th>
+                <th class="text-right px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Cap. (kg)</th>
+                <th class="text-right px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Viajes</th>
+                <th class="text-right px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Flete prom.</th>
+                <th class="text-right px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Ocup. %</th>
+                <th class="text-center px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Estado</th>
+                <th class="text-center px-4 py-3 text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider w-24">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-body" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+          </table>
+        </div>
+        <div id="empty-state" class="hidden p-12 text-center">
+          <div class="w-16 h-16 mx-auto rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-2xl mb-3">📭</div>
+          <p class="text-slate-600 dark:text-slate-400 font-medium">No hay registros que coincidan</p>
+          <p class="text-xs text-slate-500 dark:text-slate-500 mt-1">Probá limpiar los filtros o agregar un nuevo camión</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== GRÁFICOS ===================== -->
+    <section id="tab-graficos" class="tab-section p-4 lg:p-8 fade-in hidden">
+      <div class="mb-6">
+        <h3 class="text-2xl font-bold text-slate-900 dark:text-white">Análisis gráfico</h3>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Visualizaciones interactivas con Chart.js — se recalculan al cambiar la data</p>
+        <div class="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 rounded-lg">
+          <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/></svg>
+          <span class="text-xs font-medium text-indigo-700 dark:text-indigo-300">Tocá cualquier barra, punto o sector para ver el detalle de esos camiones</span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <h4 class="text-sm font-bold text-slate-900 dark:text-white">Flete promedio por CD</h4>
+            <span class="text-xs text-slate-500 dark:text-slate-400">UNI vs EMP</span>
+          </div>
+          <div class="h-72"><canvas id="chart-flete-cd"></canvas></div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <h4 class="text-sm font-bold text-slate-900 dark:text-white">Clientes por viaje · UNI vs EMP</h4>
+            <span class="text-xs text-slate-500 dark:text-slate-400">capilaridad</span>
+          </div>
+          <div class="h-72"><canvas id="chart-clientes"></canvas></div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <h4 class="text-sm font-bold text-slate-900 dark:text-white">Composición de flota</h4>
+            <span class="text-xs text-slate-500 dark:text-slate-400">por tipo de operador</span>
+          </div>
+          <div class="h-72"><canvas id="chart-composicion"></canvas></div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <h4 class="text-sm font-bold text-slate-900 dark:text-white">Ocupación vs flete · scatter</h4>
+            <span class="text-xs text-slate-500 dark:text-slate-400">cada punto = 1 camión</span>
+          </div>
+          <div class="h-72"><canvas id="chart-scatter"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== CONFIGURACIÓN ===================== -->
+    <section id="tab-config" class="tab-section p-4 lg:p-8 fade-in hidden">
+      <div class="mb-6">
+        <h3 class="text-2xl font-bold text-slate-900 dark:text-white">Configuración</h3>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Apariencia, gestión de datos y preferencias</p>
+      </div>
+
+      <div class="space-y-4 max-w-2xl">
+        <!-- Apariencia -->
+        <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <h4 class="text-base font-bold text-slate-900 dark:text-white mb-1">Apariencia</h4>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Personalizá la interfaz</p>
+          <div class="flex items-center justify-between py-2 border-t border-slate-100 dark:border-slate-800">
+            <div>
+              <p class="text-sm font-medium text-slate-900 dark:text-white">Modo oscuro</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400">Reducí el brillo en ambientes con poca luz</p>
+            </div>
+            <button onclick="toggleTheme()" class="relative inline-flex h-6 w-11 items-center rounded-full bg-slate-200 dark:bg-indigo-600 transition">
+              <span class="inline-block h-4 w-4 transform rounded-full bg-white transition translate-x-1 dark:translate-x-6"></span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Gestión de datos -->
+        <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <h4 class="text-base font-bold text-slate-900 dark:text-white mb-1">Gestión de datos</h4>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Persistencia local con localStorage del navegador</p>
+
+          <div class="space-y-2">
+            <button onclick="exportData()" class="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition text-left">
+              <div>
+                <p class="text-sm font-medium text-slate-900 dark:text-white">Exportar datos</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Descarga un archivo .json con todos los registros</p>
+              </div>
+              <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+
+            <label class="block w-full">
+              <input id="import-file" type="file" accept=".json" class="hidden" />
+              <span class="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition text-left cursor-pointer">
+                <span>
+                  <span class="block text-sm font-medium text-slate-900 dark:text-white">Importar datos</span>
+                  <span class="block text-xs text-slate-500 dark:text-slate-400">Sustituye los datos actuales por los del archivo</span>
+                </span>
+                <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              </span>
+            </label>
+
+            <button onclick="resetData()" class="w-full flex items-center justify-between px-4 py-3 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition text-left">
+              <div>
+                <p class="text-sm font-medium text-red-700 dark:text-red-400">Reiniciar a datos de demostración</p>
+                <p class="text-xs text-red-600/70 dark:text-red-400/70">Borra los registros actuales y carga la flota semilla</p>
+              </div>
+              <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Info -->
+        <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <h4 class="text-base font-bold text-slate-900 dark:text-white mb-1">Acerca de</h4>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Información del dashboard</p>
+          <dl class="space-y-2 text-sm">
+            <div class="flex justify-between py-2 border-t border-slate-100 dark:border-slate-800">
+              <dt class="text-slate-600 dark:text-slate-400">Versión</dt>
+              <dd class="font-medium text-slate-900 dark:text-white">1.0.0</dd>
+            </div>
+            <div class="flex justify-between py-2 border-t border-slate-100 dark:border-slate-800">
+              <dt class="text-slate-600 dark:text-slate-400">Stack</dt>
+              <dd class="font-medium text-slate-900 dark:text-white">HTML + Tailwind + Chart.js</dd>
+            </div>
+            <div class="flex justify-between py-2 border-t border-slate-100 dark:border-slate-800">
+              <dt class="text-slate-600 dark:text-slate-400">Persistencia</dt>
+              <dd class="font-medium text-slate-900 dark:text-white" id="storage-status">Verificando...</dd>
+            </div>
+            <div class="flex justify-between py-2 border-t border-slate-100 dark:border-slate-800">
+              <dt class="text-slate-600 dark:text-slate-400">Último cambio</dt>
+              <dd class="font-medium text-slate-900 dark:text-white" id="last-saved">-</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ===================== MODAL ===================== -->
+<div id="modal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal()"></div>
+  <div class="relative min-h-screen flex items-center justify-center p-4">
+    <div class="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div class="sticky top-0 bg-white dark:bg-slate-900 px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <h3 id="modal-title" class="text-lg font-bold text-slate-900 dark:text-white">Agregar camión</h3>
+        <button onclick="closeModal()" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <form id="modal-form" class="p-6 space-y-4">
+        <input type="hidden" id="form-id" />
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Patente *</label>
+            <input id="form-patente" required type="text" placeholder="ABC1234" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Propietario *</label>
+            <input id="form-propietario" required type="text" placeholder="Nombre del propietario" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">CD *</label>
+            <select id="form-cd" required class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="MATRIZ">MATRIZ</option>
+              <option value="OVIEDO">OVIEDO</option>
+              <option value="CDE">CDE</option>
+              <option value="ENCARNACIÓN">ENCARNACIÓN</option>
+              <option value="LIBERACIÓN">LIBERACIÓN</option>
+              <option value="SAN IGNACIO">SAN IGNACIO</option>
+              <option value="KATUETÉ">KATUETÉ</option>
+              <option value="MAUX">MAUX</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Operador *</label>
+            <input id="form-operador" required type="text" placeholder="Trylon, Daresol, o nombre individual" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Tipo *</label>
+            <select id="form-tipo" required class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="UNIPERSONAL">UNIPERSONAL</option>
+              <option value="EMPRESA">EMPRESA</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Estado *</label>
+            <select id="form-estado" required class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="ACTIVO">ACTIVO</option>
+              <option value="INACTIVO">INACTIVO</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Capacidad (kg)</label>
+            <input id="form-capacidad" type="number" min="0" step="100" placeholder="5000" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Cantidad de viajes</label>
+            <input id="form-viajes" type="number" min="0" placeholder="50" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Flete promedio (Gs.)</label>
+            <input id="form-flete" type="number" min="0" step="1000" placeholder="700000" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Ocupación (%)</label>
+            <input id="form-ocupacion" type="number" min="0" max="100" step="1" placeholder="42" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Clientes por viaje</label>
+            <input id="form-clientes" type="number" min="0" step="0.1" placeholder="25" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Fecha de alta</label>
+            <input id="form-fecha" type="date" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition">Cancelar</button>
+          <button type="submit" class="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== DRILL-DOWN PANEL ===================== -->
+<div id="drilldown" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeDrillDown()"></div>
+  <!-- Drawer: sube desde abajo en mobile, panel derecho en desktop -->
+  <div class="absolute inset-x-0 bottom-0 sm:inset-y-0 sm:right-0 sm:left-auto sm:w-[640px] bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-none shadow-2xl flex flex-col max-h-[85vh] sm:max-h-none sm:h-full slide-in">
+    <!-- Header -->
+    <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between gap-3">
+      <div class="min-w-0">
+        <h3 id="dd-title" class="text-lg font-bold text-slate-900 dark:text-white truncate">Detalle</h3>
+        <p id="dd-subtitle" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">—</p>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <button onclick="exportDrillDown()" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition" title="Exportar selección a CSV">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          CSV
+        </button>
+        <button onclick="closeDrillDown()" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+    <!-- Resumen -->
+    <div id="dd-summary" class="px-5 py-4 border-b border-slate-200 dark:border-slate-800"></div>
+    <!-- Tabla -->
+    <div class="flex-1 overflow-auto">
+      <table class="w-full text-sm">
+        <thead class="sticky top-0 bg-slate-50 dark:bg-slate-800/90 backdrop-blur border-b border-slate-200 dark:border-slate-800">
+          <tr>
+            <th class="text-left px-3 py-2 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Patente</th>
+            <th class="text-left px-3 py-2 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Propietario</th>
+            <th class="text-left px-3 py-2 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">CD</th>
+            <th class="text-left px-3 py-2 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tipo</th>
+            <th class="text-right px-3 py-2 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Cap.</th>
+            <th class="text-right px-3 py-2 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Viajes</th>
+            <th class="text-right px-3 py-2 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Flete</th>
+            <th class="text-right px-3 py-2 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Ocup.</th>
+            <th class="text-right px-3 py-2 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Cli/v.</th>
+            <th class="text-center px-3 py-2 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">●</th>
+          </tr>
+        </thead>
+        <tbody id="dd-table-body" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+      </table>
+    </div>
+    <!-- Footer -->
+    <div class="px-5 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+      <p class="text-xs text-slate-500 dark:text-slate-400"><span id="dd-count" class="font-semibold">0 registros</span> · ordenados por flete (mayor a menor)</p>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
+
+<!-- Confirm dialog -->
+<div id="confirm" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="cancelConfirm()"></div>
+  <div class="relative min-h-screen flex items-center justify-center p-4">
+    <div class="relative bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md p-6">
+      <h3 id="confirm-title" class="text-lg font-bold text-slate-900 dark:text-white mb-2">¿Confirmar acción?</h3>
+      <p id="confirm-text" class="text-sm text-slate-600 dark:text-slate-400 mb-6">Esta acción no se puede deshacer.</p>
+      <div class="flex justify-end gap-2">
+        <button onclick="cancelConfirm()" class="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition">Cancelar</button>
+        <button id="confirm-ok" class="px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-sm transition">Confirmar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== SCRIPT ===================== -->
+<script>
+'use strict';
+
+/* =====================================================
+ * ESTADO GLOBAL
+ * ===================================================== */
+const STORAGE_KEY = 'fleetpanel_data_v1';
+const THEME_KEY = 'fleetpanel_theme';
+let state = {
+  records: [],
+  filters: { search: '', cd: '', tipo: '', estado: '' },
+  activeTab: 'overview',
+  charts: {},
+  lastSaved: null,
+  storageAvailable: false
+};
+
+/* =====================================================
+ * DATOS SEMILLA (basados en el análisis real de flota)
+ * ===================================================== */
+const SEED_DATA = [
+  { id: 1, patente: "AYD279", propietario: "AURELIO GONZALEZ", cd: "MATRIZ", operador: "AURELIO GONZALEZ", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 15, flete: 559799, ocupacion: 46.83, clientes: 36.3, fecha: "2023-01-01" },
+  { id: 2, patente: "BDV402", propietario: "JOSE DAVID CANDIA ESQUIVEL", cd: "MATRIZ", operador: "JOSE DAVID CANDIA ESQUIVEL", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 2500, viajes: 12, flete: 500000, ocupacion: 46.67, clientes: 5.6, fecha: "2023-01-01" },
+  { id: 3, patente: "AFJ763", propietario: "CIRILA LEZCANO", cd: "MATRIZ", operador: "CIRILA LEZCANO", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 63, flete: 500000, ocupacion: 52.95, clientes: 8.3, fecha: "2023-01-01" },
+  { id: 4, patente: "AAFX719", propietario: "JOSE DAVID CANDIA ESQUIVEL", cd: "MATRIZ", operador: "JOSE DAVID CANDIA ESQUIVEL", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 10000, viajes: 72, flete: 654545, ocupacion: 46.23, clientes: 5.6, fecha: "2023-01-01" },
+  { id: 5, patente: "ASX631", propietario: "DERLIS RAMIREZ", cd: "MATRIZ", operador: "DERLIS RAMIREZ", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 8000, viajes: 82, flete: 554545, ocupacion: 51.51, clientes: 3.2, fecha: "2023-01-01" },
+  { id: 6, patente: "BDB765", propietario: "MARINA CONCEPCION ESTIGARRIBIA CABALLERO", cd: "MATRIZ", operador: "MARINA CONCEPCION ESTIGARRIBIA CABALLERO", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 2500, viajes: 99, flete: 526872, ocupacion: 48.0, clientes: 42.1, fecha: "2023-01-01" },
+  { id: 7, patente: "BDA460", propietario: "PEDRO ISMAL CABRAL", cd: "MATRIZ", operador: "PEDRO ISMAL CABRAL", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 94, flete: 600044, ocupacion: 41.84, clientes: 44.2, fecha: "2023-01-01" },
+  { id: 8, patente: "AAAX117", propietario: "DERLIS GONZALEZ", cd: "MATRIZ", operador: "DERLIS GONZALEZ", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 62, flete: 688584, ocupacion: 49.13, clientes: 40.4, fecha: "2023-01-01" },
+  { id: 9, patente: "XBB963", propietario: "DERLIS RAMIREZ", cd: "MATRIZ", operador: "DERLIS RAMIREZ", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 10000, viajes: 94, flete: 654545, ocupacion: 52.09, clientes: 2.4, fecha: "2023-01-01" },
+  { id: 10, patente: "AADT682", propietario: "VICTOR RENE SOTO", cd: "MATRIZ", operador: "VICTOR RENE SOTO", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 75, flete: 546857, ocupacion: 37.72, clientes: 37.7, fecha: "2023-01-01" },
+  { id: 11, patente: "BST225", propietario: "VICTOR RENE SOTO", cd: "MATRIZ", operador: "VICTOR RENE SOTO", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 2500, viajes: 85, flete: 505513, ocupacion: 44.62, clientes: 44.6, fecha: "2023-01-01" },
+  { id: 12, patente: "BRO266", propietario: "VICTOR RENE SOTO", cd: "MATRIZ", operador: "VICTOR RENE SOTO", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 2500, viajes: 80, flete: 483246, ocupacion: 48.35, clientes: 37.6, fecha: "2023-01-01" },
+  { id: 13, patente: "BSZ330", propietario: "YVAN GONZALEZ", cd: "MATRIZ", operador: "YVAN GONZALEZ", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 90, flete: 621017, ocupacion: 38.77, clientes: 45.0, fecha: "2023-01-01" },
+  { id: 14, patente: "AUJ511", propietario: "NESTOR DAMIAN ACOSTA AMARILLA", cd: "MATRIZ", operador: "NESTOR DAMIAN ACOSTA AMARILLA", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 100, flete: 534510, ocupacion: 35.79, clientes: 46.5, fecha: "2023-01-01" },
+  { id: 15, patente: "BDC239", propietario: "NESTOR DAMIAN ACOSTA AMARILLA", cd: "MATRIZ", operador: "NESTOR DAMIAN ACOSTA AMARILLA", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 75, flete: 541610, ocupacion: 35.7, clientes: 44.4, fecha: "2023-01-01" },
+  { id: 16, patente: "ASR983", propietario: "NESTOR DAMIAN ACOSTA AMARILLA", cd: "MATRIZ", operador: "NESTOR DAMIAN ACOSTA AMARILLA", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 83, flete: 537435, ocupacion: 38.01, clientes: 41.8, fecha: "2023-01-01" },
+  { id: 17, patente: "BKL144", propietario: "OSCAR SEGOVIA", cd: "MATRIZ", operador: "OSCAR SEGOVIA", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 61, flete: 556536, ocupacion: 36.3, clientes: 23.8, fecha: "2023-01-01" },
+  { id: 18, patente: "POO934", propietario: "PEDRO JUAN MARTINEZ RAMIREZ", cd: "MATRIZ", operador: "PEDRO JUAN MARTINEZ RAMIREZ", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 8000, viajes: 50, flete: 554545, ocupacion: 58.46, clientes: 1.6, fecha: "2023-01-01" },
+  { id: 19, patente: "HEX141", propietario: "PEDRO JUAN MARTINEZ RAMIREZ", cd: "MATRIZ", operador: "PEDRO JUAN MARTINEZ RAMIREZ", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 10000, viajes: 86, flete: 654545, ocupacion: 57.95, clientes: 1.5, fecha: "2023-01-01" },
+  { id: 20, patente: "BPT443", propietario: "TEODORO ORTIZ", cd: "MATRIZ", operador: "TEODORO ORTIZ", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 2500, viajes: 96, flete: 544128, ocupacion: 50.45, clientes: 44.5, fecha: "2023-01-01" },
+  { id: 21, patente: "AXH466", propietario: "TEODORO VALENTIN LEON MARTINEZ", cd: "MATRIZ", operador: "TEODORO VALENTIN LEON MARTINEZ", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 2500, viajes: 20, flete: 522844, ocupacion: 48.37, clientes: 46.9, fecha: "2023-01-01" },
+  { id: 22, patente: "BPO006", propietario: "VIDAL GONZALEZ", cd: "MATRIZ", operador: "VIDAL GONZALEZ", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 2500, viajes: 71, flete: 570678, ocupacion: 51.6, clientes: 46.5, fecha: "2023-01-01" },
+  { id: 23, patente: "BPF073", propietario: "WILSON ESCOBAR", cd: "MATRIZ", operador: "WILSON ESCOBAR", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 96, flete: 856970, ocupacion: 47.38, clientes: 43.3, fecha: "2023-01-01" },
+  { id: 24, patente: "BVG737", propietario: "YESSICA CABRERA", cd: "MATRIZ", operador: "YESSICA CABRERA", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 80, flete: 530981, ocupacion: 42.47, clientes: 40.9, fecha: "2023-01-01" },
+  { id: 25, patente: "AABI992", propietario: "RENATO SANTIAGO MORINIGO BENITEZ", cd: "MATRIZ", operador: "RENATO SANTIAGO MORINIGO BENITEZ", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 89, flete: 679691, ocupacion: 39.37, clientes: 43.1, fecha: "2023-01-01" },
+  { id: 26, patente: "BKC472", propietario: "MARINA CONCEPCION ESTIGARRIBIA CABALLERO", cd: "MATRIZ", operador: "MARINA CONCEPCION ESTIGARRIBIA CABALLERO", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 2500, viajes: 95, flete: 529915, ocupacion: 53.77, clientes: 42.0, fecha: "2023-01-01" },
+  { id: 27, patente: "BDD100", propietario: "MIGUEL SOTO", cd: "MATRIZ", operador: "MIGUEL SOTO", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 2500, viajes: 78, flete: 526418, ocupacion: 47.97, clientes: 44.7, fecha: "2023-01-01" },
+  { id: 28, patente: "HEK408", propietario: "HUGO SALINAS", cd: "MATRIZ", operador: "HUGO SALINAS", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 83, flete: 712789, ocupacion: 41.14, clientes: 42.9, fecha: "2023-01-01" },
+  { id: 29, patente: "BOK598", propietario: "CESAR NUÑEZ", cd: "MATRIZ", operador: "CESAR NUÑEZ", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 25, flete: 589736, ocupacion: 38.54, clientes: 49.0, fecha: "2023-01-01" },
+  { id: 30, patente: "ALJ059", propietario: "WILSON ESCOBAR", cd: "MATRIZ", operador: "WILSON ESCOBAR", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 23, flete: 712634, ocupacion: 36.57, clientes: 46.2, fecha: "2023-01-01" },
+  { id: 31, patente: "ANK173", propietario: "SULLY CABRERA", cd: "MATRIZ", operador: "SULLY CABRERA", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 2, flete: 693514, ocupacion: 31.06, clientes: 23.0, fecha: "2023-01-01" },
+  { id: 32, patente: "DAV005", propietario: "JUAN CARLOS CHAVEZ", cd: "MATRIZ", operador: "JUAN CARLOS CHAVEZ", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 68, flete: 613189, ocupacion: 39.56, clientes: 46.1, fecha: "2023-01-01" },
+  { id: 33, patente: "BOD033", propietario: "YVAN GONZALEZ", cd: "MATRIZ", operador: "YVAN GONZALEZ", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 40, flete: 500000, ocupacion: 47.13, clientes: 4.0, fecha: "2023-01-01" },
+  { id: 34, patente: "AAOJ677", propietario: "TRYLON S.A - EMPRESA", cd: "MATRIZ", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 85, flete: 661555, ocupacion: 48.09, clientes: 11.9, fecha: "2023-01-01" },
+  { id: 35, patente: "AAOL247", propietario: "TRYLON S.A - EMPRESA", cd: "MATRIZ", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 93, flete: 1124678, ocupacion: 48.65, clientes: 18.8, fecha: "2023-01-01" },
+  { id: 36, patente: "AAOL248", propietario: "TRYLON S.A - EMPRESA", cd: "MATRIZ", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 85, flete: 302070, ocupacion: 37.05, clientes: 38.6, fecha: "2023-01-01" },
+  { id: 37, patente: "AAOL243", propietario: "TRYLON S.A - EMPRESA", cd: "MATRIZ", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 83, flete: 818822, ocupacion: 42.76, clientes: 18.7, fecha: "2023-01-01" },
+  { id: 38, patente: "AAOL337", propietario: "TRYLON S.A - EMPRESA", cd: "MATRIZ", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 87, flete: 191061, ocupacion: 40.33, clientes: 48.7, fecha: "2023-01-01" },
+  { id: 39, patente: "AAOL341", propietario: "TRYLON S.A - EMPRESA", cd: "MATRIZ", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 95, flete: 235305, ocupacion: 36.27, clientes: 44.8, fecha: "2023-01-01" },
+  { id: 40, patente: "AALG595", propietario: "TRYLON S.A - EMPRESA", cd: "MATRIZ", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 81, flete: 706057, ocupacion: 42.3, clientes: 20.2, fecha: "2023-01-01" },
+  { id: 41, patente: "AAOM682", propietario: "TRYLON S.A - EMPRESA", cd: "MATRIZ", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 94, flete: 486847, ocupacion: 30.72, clientes: 35.2, fecha: "2023-01-01" },
+  { id: 42, patente: "AAOL346", propietario: "TRYLON S.A - EMPRESA", cd: "MATRIZ", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 101, flete: 248268, ocupacion: 31.94, clientes: 49.7, fecha: "2023-01-01" },
+  { id: 43, patente: "CCS714", propietario: "SERINCAR S.A", cd: "MATRIZ", operador: "SERINCAR S.A", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 103, flete: 636363, ocupacion: 39.18, clientes: 44.7, fecha: "2023-01-01" },
+  { id: 44, patente: "AAOL237", propietario: "TRYLON S.A - EMPRESA", cd: "MATRIZ", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 87, flete: 691556, ocupacion: 42.54, clientes: 25.9, fecha: "2023-01-01" },
+  { id: 45, patente: "AAOM638", propietario: "TRYLON S.A - EMPRESA", cd: "MATRIZ", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 84, flete: 855573, ocupacion: 32.43, clientes: 19.1, fecha: "2023-01-01" },
+  { id: 46, patente: "AAOL347", propietario: "TRYLON S.A - EMPRESA", cd: "MATRIZ", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 85, flete: 882970, ocupacion: 38.3, clientes: 36.2, fecha: "2023-01-01" },
+  { id: 47, patente: "AAOM635", propietario: "TRYLON S.A - EMPRESA", cd: "MATRIZ", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 92, flete: 1601461, ocupacion: 32.7, clientes: 26.3, fecha: "2023-01-01" },
+  { id: 48, patente: "AALI919", propietario: "TRYLON S.A - EMPRESA", cd: "MATRIZ", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 106, flete: 365307, ocupacion: 62.44, clientes: 53.6, fecha: "2023-01-01" },
+  { id: 49, patente: "AALG597", propietario: "TRYLON S.A - EMPRESA", cd: "MATRIZ", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 105, flete: 1176784, ocupacion: 38.01, clientes: 36.5, fecha: "2023-01-01" },
+  { id: 50, patente: "AAOY652", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 96, flete: 616083, ocupacion: 35.87, clientes: 19.5, fecha: "2023-01-01" },
+  { id: 51, patente: "AAOY654", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 101, flete: 1096719, ocupacion: 35.87, clientes: 17.6, fecha: "2023-01-01" },
+  { id: 52, patente: "AAOY655", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 80, flete: 1382726, ocupacion: 33.49, clientes: 12.4, fecha: "2023-01-01" },
+  { id: 53, patente: "AAOY657", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 89, flete: 824252, ocupacion: 35.68, clientes: 15.8, fecha: "2023-01-01" },
+  { id: 54, patente: "BYN482", propietario: "JUAN CARLOS CHAVEZ", cd: "MATRIZ", operador: "JUAN CARLOS CHAVEZ", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 74, flete: 640041, ocupacion: 39.75, clientes: 46.6, fecha: "2023-01-01" },
+  { id: 55, patente: "BVD201", propietario: "SIDER CARGO SRL", cd: "MATRIZ", operador: "SIDER CARGO SRL", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 83, flete: 789586, ocupacion: 44.64, clientes: 6.7, fecha: "2023-01-01" },
+  { id: 56, patente: "BJS153", propietario: "SIDER CARGO SRL", cd: "MATRIZ", operador: "SIDER CARGO SRL", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 62, flete: 789586, ocupacion: 44.1, clientes: 30.3, fecha: "2023-01-01" },
+  { id: 57, patente: "BFU938", propietario: "SIDER CARGO SRL", cd: "MATRIZ", operador: "SIDER CARGO SRL", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 10000, viajes: 83, flete: 892680, ocupacion: 49.12, clientes: 5.3, fecha: "2023-01-01" },
+  { id: 58, patente: "AAOL190", propietario: "SIDER CARGO SRL", cd: "MATRIZ", operador: "SIDER CARGO SRL", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 92, flete: 715859, ocupacion: 34.7, clientes: 44.2, fecha: "2023-01-01" },
+  { id: 59, patente: "AAOL201", propietario: "SIDER CARGO SRL", cd: "MATRIZ", operador: "SIDER CARGO SRL", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 102, flete: 715859, ocupacion: 38.86, clientes: 47.1, fecha: "2023-01-01" },
+  { id: 60, patente: "GAB270", propietario: "SIDER CARGO SRL", cd: "MATRIZ", operador: "SIDER CARGO SRL", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 10000, viajes: 83, flete: 892680, ocupacion: 53.57, clientes: 3.0, fecha: "2023-01-01" },
+  { id: 61, patente: "OAR204", propietario: "SIDER CARGO SRL", cd: "MATRIZ", operador: "SIDER CARGO SRL", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 1, flete: 789586, ocupacion: 27.33, clientes: 43.0, fecha: "2023-01-01" },
+  { id: 62, patente: "BFF254", propietario: "SERINCAR S.A", cd: "MATRIZ", operador: "SERINCAR S.A", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 33, flete: 727272, ocupacion: 43.71, clientes: 11.4, fecha: "2023-01-01" },
+  { id: 63, patente: "HDK473", propietario: "SERINCAR S.A", cd: "MATRIZ", operador: "SERINCAR S.A", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 79, flete: 636363, ocupacion: 45.29, clientes: 18.6, fecha: "2023-01-01" },
+  { id: 64, patente: "BPZ606", propietario: "SERINCAR S.A", cd: "MATRIZ", operador: "SERINCAR S.A", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 14000, viajes: 5, flete: 1227272, ocupacion: 68.89, clientes: 1.8, fecha: "2023-01-01" },
+  { id: 65, patente: "BVA796", propietario: "SERINCAR S.A", cd: "MATRIZ", operador: "SERINCAR S.A", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 85, flete: 636363, ocupacion: 47.93, clientes: 15.0, fecha: "2023-01-01" },
+  { id: 66, patente: "ILS157", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 105, flete: 1369819, ocupacion: 41.53, clientes: 9.2, fecha: "2023-01-01" },
+  { id: 67, patente: "IMQ382", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 101, flete: 427589, ocupacion: 47.3, clientes: 7.8, fecha: "2023-01-01" },
+  { id: 68, patente: "AASS280", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 4, flete: 529086, ocupacion: 11.59, clientes: 14.5, fecha: "2023-01-01" },
+  { id: 69, patente: "ILV380", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 87, flete: 590667, ocupacion: 42.09, clientes: 9.4, fecha: "2023-01-01" },
+  { id: 70, patente: "ILS162", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 73, flete: 598926, ocupacion: 39.0, clientes: 12.4, fecha: "2023-01-01" },
+  { id: 71, patente: "BTG444", propietario: "SERINCAR S.A", cd: "MATRIZ", operador: "SERINCAR S.A", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 95, flete: 727272, ocupacion: 46.04, clientes: 18.7, fecha: "2023-01-01" },
+  { id: 72, patente: "IMR480", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 90, flete: 900216, ocupacion: 39.36, clientes: 10.6, fecha: "2023-01-01" },
+  { id: 73, patente: "ILV382", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 97, flete: 1733791, ocupacion: 37.45, clientes: 11.6, fecha: "2023-01-01" },
+  { id: 74, patente: "INI359", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 10000, viajes: 100, flete: 1047775, ocupacion: 43.85, clientes: 6.8, fecha: "2023-01-01" },
+  { id: 75, patente: "ILV379", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 96, flete: 2080641, ocupacion: 40.81, clientes: 10.1, fecha: "2023-01-01" },
+  { id: 76, patente: "IMZ732", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 10000, viajes: 102, flete: 1387300, ocupacion: 43.72, clientes: 7.7, fecha: "2023-01-01" },
+  { id: 77, patente: "HGH360", propietario: "DARESOL E.A.S", cd: "MATRIZ", operador: "DARESOL E.A.S", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 81, flete: 656790, ocupacion: 45.22, clientes: 9.0, fecha: "2023-01-01" },
+  { id: 78, patente: "BCR785", propietario: "DARESOL E.A.S", cd: "MATRIZ", operador: "DARESOL E.A.S", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 111, flete: 645945, ocupacion: 50.77, clientes: 3.8, fecha: "2023-01-01" },
+  { id: 79, patente: "CBS833", propietario: "DARESOL E.A.S", cd: "MATRIZ", operador: "DARESOL E.A.S", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 95, flete: 646315, ocupacion: 48.18, clientes: 9.0, fecha: "2023-01-01" },
+  { id: 80, patente: "ACK294", propietario: "DARESOL E.A.S", cd: "MATRIZ", operador: "DARESOL E.A.S", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 87, flete: 644827, ocupacion: 48.69, clientes: 5.9, fecha: "2023-01-01" },
+  { id: 81, patente: "BJT702", propietario: "DARESOL E.A.S", cd: "MATRIZ", operador: "DARESOL E.A.S", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 91, flete: 651648, ocupacion: 44.73, clientes: 9.5, fecha: "2023-01-01" },
+  { id: 82, patente: "AARJ950", propietario: "DARESOL E.A.S", cd: "MATRIZ", operador: "DARESOL E.A.S", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 101, flete: 649504, ocupacion: 40.1, clientes: 38.7, fecha: "2023-01-01" },
+  { id: 83, patente: "AAPY945", propietario: "DARESOL E.A.S", cd: "MATRIZ", operador: "DARESOL E.A.S", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 111, flete: 649549, ocupacion: 49.95, clientes: 5.0, fecha: "2023-01-01" },
+  { id: 84, patente: "ALL388", propietario: "DARESOL E.A.S", cd: "MATRIZ", operador: "DARESOL E.A.S", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 53, flete: 694339, ocupacion: 41.98, clientes: 10.7, fecha: "2023-01-01" },
+  { id: 85, patente: "BJZ322", propietario: "DARESOL E.A.S", cd: "MATRIZ", operador: "DARESOL E.A.S", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 93, flete: 650537, ocupacion: 41.21, clientes: 25.2, fecha: "2023-01-01" },
+  { id: 86, patente: "ALL721", propietario: "DARESOL E.A.S", cd: "MATRIZ", operador: "DARESOL E.A.S", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 77, flete: 659740, ocupacion: 43.73, clientes: 5.7, fecha: "2023-01-01" },
+  { id: 87, patente: "AABR", propietario: "DARESOL E.A.S", cd: "MATRIZ", operador: "DARESOL E.A.S", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 88, flete: 728512, ocupacion: 50.17, clientes: 6.7, fecha: "2023-01-01" },
+  { id: 88, patente: "ACK358", propietario: "DARESOL E.A.S", cd: "MATRIZ", operador: "DARESOL E.A.S", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 68, flete: 724064, ocupacion: 46.48, clientes: 9.5, fecha: "2023-01-01" },
+  { id: 89, patente: "GAB912", propietario: "DARESOL E.A.S", cd: "MATRIZ", operador: "DARESOL E.A.S", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 90, flete: 728686, ocupacion: 53.6, clientes: 4.1, fecha: "2023-01-01" },
+  { id: 90, patente: "ACK730", propietario: "DARESOL E.A.S", cd: "MATRIZ", operador: "DARESOL E.A.S", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 85, flete: 734117, ocupacion: 55.6, clientes: 4.5, fecha: "2023-01-01" },
+  { id: 91, patente: "AAGHI852", propietario: "DARESOL E.A.S", cd: "MATRIZ", operador: "DARESOL E.A.S", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 14000, viajes: 92, flete: 972727, ocupacion: 53.85, clientes: 1.5, fecha: "2023-01-01" },
+  { id: 92, patente: "KAJ961", propietario: "DARESOL E.A.S", cd: "MATRIZ", operador: "DARESOL E.A.S", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 41, flete: 678048, ocupacion: 44.85, clientes: 8.4, fecha: "2023-01-01" },
+  { id: 93, patente: "BXD929", propietario: "TRANSP GARCIA", cd: "MATRIZ", operador: "TRANSP GARCIA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 32, flete: 727272, ocupacion: 49.14, clientes: 9.8, fecha: "2023-01-01" },
+  { id: 94, patente: "CDC179", propietario: "TRANSP GARCIA", cd: "MATRIZ", operador: "TRANSP GARCIA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 10000, viajes: 49, flete: 800000, ocupacion: 39.15, clientes: 2.8, fecha: "2023-01-01" },
+  { id: 95, patente: "BAP593", propietario: "TRANSP GARCIA", cd: "MATRIZ", operador: "TRANSP GARCIA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 60, flete: 618181, ocupacion: 50.67, clientes: 4.8, fecha: "2023-01-01" },
+  { id: 96, patente: "AYN606", propietario: "TRANSP GARCIA", cd: "MATRIZ", operador: "TRANSP GARCIA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 4, flete: 618181, ocupacion: 43.35, clientes: 2.0, fecha: "2023-01-01" },
+  { id: 97, patente: "AALB674", propietario: "DARESOL E.A.S", cd: "MATRIZ", operador: "DARESOL E.A.S", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 77, flete: 653246, ocupacion: 47.9, clientes: 6.2, fecha: "2023-01-01" },
+  { id: 98, patente: "HAK921", propietario: "ANA AVEIRO", cd: "MATRIZ", operador: "ANA AVEIRO", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 2500, viajes: 79, flete: 522865, ocupacion: 48.24, clientes: 42.4, fecha: "2023-01-01" },
+  { id: 99, patente: "AHA045", propietario: "MARIO ALONSO", cd: "MATRIZ", operador: "MARIO ALONSO", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 2500, viajes: 81, flete: 504769, ocupacion: 44.61, clientes: 44.3, fecha: "2023-01-01" },
+  { id: 100, patente: "AASB347", propietario: "JUAN CARLOS TORALES", cd: "MATRIZ", operador: "JUAN CARLOS TORALES", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 2500, viajes: 1, flete: 700000, ocupacion: 35.57, clientes: 54.0, fecha: "2023-01-01" },
+  { id: 101, patente: "HAG580", propietario: "JUAN CARLOS TORALES", cd: "MATRIZ", operador: "JUAN CARLOS TORALES", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 2500, viajes: 81, flete: 489336, ocupacion: 48.17, clientes: 37.8, fecha: "2023-01-01" },
+  { id: 102, patente: "BOL948", propietario: "OVIDIO DOMINGUEZ", cd: "MATRIZ", operador: "OVIDIO DOMINGUEZ", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 1, flete: 0, ocupacion: 22.41, clientes: 2.0, fecha: "2023-01-01" },
+  { id: 103, patente: "BHA200", propietario: "MG TRANSPORTADORA", cd: "MATRIZ", operador: "MG TRANSPORTADORA", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 1, flete: 781818, ocupacion: 20.39, clientes: 51.0, fecha: "2023-01-01" },
+  { id: 104, patente: "BHS111", propietario: "VICTOR CABRERA", cd: "MATRIZ", operador: "VICTOR CABRERA", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 90, flete: 581020, ocupacion: 34.23, clientes: 49.8, fecha: "2023-01-01" },
+  { id: 105, patente: "BJK476", propietario: "HERIBERTO FIGUEREDO", cd: "MATRIZ", operador: "HERIBERTO FIGUEREDO", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 59, flete: 506672, ocupacion: 34.15, clientes: 33.9, fecha: "2023-01-01" },
+  { id: 106, patente: "BAK412", propietario: "GUSTAVO RUIZ DIAZ", cd: "MATRIZ", operador: "GUSTAVO RUIZ DIAZ", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 54, flete: 605506, ocupacion: 38.28, clientes: 44.5, fecha: "2023-01-01" },
+  { id: 107, patente: "BGJ918", propietario: "PATRICIA LEZME", cd: "MATRIZ", operador: "PATRICIA LEZME", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 1, flete: 199886, ocupacion: 21.89, clientes: 53.0, fecha: "2023-01-01" },
+  { id: 108, patente: "KAP262", propietario: "PASTOR PEREIRA", cd: "MATRIZ", operador: "PASTOR PEREIRA", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 80, flete: 610438, ocupacion: 46.26, clientes: 42.9, fecha: "2023-01-01" },
+  { id: 109, patente: "HAD759", propietario: "ÑANDE LOGISTICA", cd: "MATRIZ", operador: "ÑANDE LOGISTICA", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 10000, viajes: 33, flete: 634710, ocupacion: 44.7, clientes: 7.6, fecha: "2023-01-01" },
+  { id: 110, patente: "BSC662", propietario: "OVIDIO DOMINGUEZ", cd: "MATRIZ", operador: "OVIDIO DOMINGUEZ", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 10000, viajes: 34, flete: 654545, ocupacion: 49.52, clientes: 3.7, fecha: "2023-01-01" },
+  { id: 111, patente: "BSC662", propietario: "OVIDIO DOMINGUEZ", cd: "MATRIZ", operador: "OVIDIO DOMINGUEZ", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 10000, viajes: 34, flete: 654545, ocupacion: 49.52, clientes: 3.7, fecha: "2023-01-01" },
+  { id: 112, patente: "AACI777", propietario: "SIDER CARGO SRL", cd: "MATRIZ", operador: "SIDER CARGO SRL", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 96, flete: 789586, ocupacion: 26.94, clientes: 49.6, fecha: "2023-01-01" },
+  { id: 113, patente: "WBOK098", propietario: "SIDER CARGO SRL", cd: "MATRIZ", operador: "SIDER CARGO SRL", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 57, flete: 789586, ocupacion: 35.37, clientes: 24.2, fecha: "2023-01-01" },
+  { id: 114, patente: "WBOV461", propietario: "SIDER CARGO SRL", cd: "MATRIZ", operador: "SIDER CARGO SRL", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 91, flete: 789586, ocupacion: 50.12, clientes: 24.0, fecha: "2023-01-01" },
+  { id: 115, patente: "HFB450", propietario: "JAUSER CARGO", cd: "MATRIZ", operador: "JAUSER CARGO", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 11, flete: 800000, ocupacion: 62.69, clientes: 1.4, fecha: "2023-01-01" },
+  { id: 116, patente: "HFB442", propietario: "JAUSER CARGO", cd: "MATRIZ", operador: "JAUSER CARGO", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 11, flete: 800000, ocupacion: 60.44, clientes: 1.5, fecha: "2023-01-01" },
+  { id: 117, patente: "HFB430", propietario: "JAUSER CARGO", cd: "MATRIZ", operador: "JAUSER CARGO", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 4, flete: 800000, ocupacion: 59.42, clientes: 1.2, fecha: "2023-01-01" },
+  { id: 118, patente: "HFB433", propietario: "JAUSER CARGO", cd: "MATRIZ", operador: "JAUSER CARGO", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 4, flete: 800000, ocupacion: 95.12, clientes: 1.0, fecha: "2023-01-01" },
+  { id: 119, patente: "ASY074", propietario: "ANTONIO MORENO", cd: "OVIEDO", operador: "ANTONIO MORENO", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 2500, viajes: 55, flete: 455111, ocupacion: 25.57, clientes: 30.7, fecha: "2023-01-01" },
+  { id: 120, patente: "KAT726", propietario: "CARLOS JIMENEZ", cd: "OVIEDO", operador: "CARLOS JIMENEZ", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 103, flete: 858762, ocupacion: 30.6, clientes: 32.9, fecha: "2023-01-01" },
+  { id: 121, patente: "KAT726", propietario: "CARLOS JIMENEZ", cd: "OVIEDO", operador: "CARLOS JIMENEZ", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 103, flete: 858762, ocupacion: 30.6, clientes: 32.9, fecha: "2023-01-01" },
+  { id: 122, patente: "AARF201", propietario: "LIDER PAREDES", cd: "OVIEDO", operador: "LIDER PAREDES", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 8000, viajes: 103, flete: 716740, ocupacion: 31.19, clientes: 25.0, fecha: "2023-01-01" },
+  { id: 123, patente: "XBS696", propietario: "LIDER PAREDES", cd: "OVIEDO", operador: "LIDER PAREDES", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 8000, viajes: 86, flete: 796809, ocupacion: 28.89, clientes: 26.6, fecha: "2023-01-01" },
+  { id: 124, patente: "AAII198", propietario: "LIDER PAREDES", cd: "OVIEDO", operador: "LIDER PAREDES", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 8000, viajes: 105, flete: 902022, ocupacion: 24.75, clientes: 31.1, fecha: "2023-01-01" },
+  { id: 125, patente: "BKB882", propietario: "HERIB GONZALEZ HG", cd: "OVIEDO", operador: "HERIB GONZALEZ HG", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 2500, viajes: 83, flete: 908012, ocupacion: 31.2, clientes: 29.0, fecha: "2023-01-01" },
+  { id: 126, patente: "AAKG012", propietario: "HERIB GONZALEZ HG", cd: "OVIEDO", operador: "HERIB GONZALEZ HG", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 95, flete: 1104039, ocupacion: 38.1, clientes: 29.6, fecha: "2023-01-01" },
+  { id: 127, patente: "BYU870", propietario: "HERIB GONZALEZ HG", cd: "OVIEDO", operador: "HERIB GONZALEZ HG", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 2500, viajes: 91, flete: 847252, ocupacion: 29.75, clientes: 33.7, fecha: "2023-01-01" },
+  { id: 128, patente: "AAMA622", propietario: "HERIB GONZALEZ HG", cd: "OVIEDO", operador: "HERIB GONZALEZ HG", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 98, flete: 1113306, ocupacion: 30.32, clientes: 34.0, fecha: "2023-01-01" },
+  { id: 129, patente: "AAKI653", propietario: "HERIB GONZALEZ HG", cd: "OVIEDO", operador: "HERIB GONZALEZ HG", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 25, flete: 954400, ocupacion: 26.55, clientes: 36.8, fecha: "2023-01-01" },
+  { id: 130, patente: "OCH013", propietario: "RUBEN ZORRILLA", cd: "OVIEDO", operador: "RUBEN ZORRILLA", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 69, flete: 619965, ocupacion: 34.83, clientes: 33.5, fecha: "2023-01-01" },
+  { id: 131, patente: "OGK159", propietario: "RUBEN ZORRILLA", cd: "OVIEDO", operador: "RUBEN ZORRILLA", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 101, flete: 672410, ocupacion: 30.23, clientes: 35.2, fecha: "2023-01-01" },
+  { id: 132, patente: "AAIJ962", propietario: "RUBEN ZORRILLA", cd: "OVIEDO", operador: "RUBEN ZORRILLA", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 2500, viajes: 96, flete: 629004, ocupacion: 29.87, clientes: 33.9, fecha: "2023-01-01" },
+  { id: 133, patente: "AASC632", propietario: "RUBEN ZORRILLA", cd: "OVIEDO", operador: "RUBEN ZORRILLA", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 80, flete: 632343, ocupacion: 34.01, clientes: 34.0, fecha: "2023-01-01" },
+  { id: 134, patente: "AATH863", propietario: "SOLINCARL", cd: "OVIEDO", operador: "SOLINCARL", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 1, flete: 1045454, ocupacion: 23.93, clientes: 35.0, fecha: "2023-01-01" },
+  { id: 135, patente: "AATH906", propietario: "SOLINCARL", cd: "OVIEDO", operador: "SOLINCARL", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 74, flete: 972936, ocupacion: 47.64, clientes: 12.2, fecha: "2023-01-01" },
+  { id: 136, patente: "AATH906", propietario: "SOLINCARL", cd: "OVIEDO", operador: "SOLINCARL", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 74, flete: 972936, ocupacion: 47.64, clientes: 12.2, fecha: "2023-01-01" },
+  { id: 137, patente: "XBV952", propietario: "SOLINCARL", cd: "OVIEDO", operador: "SOLINCARL", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 10000, viajes: 46, flete: 854436, ocupacion: 40.23, clientes: 9.5, fecha: "2023-01-01" },
+  { id: 138, patente: "OBP980", propietario: "FC", cd: "OVIEDO", operador: "FC", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 8000, viajes: 95, flete: 615102, ocupacion: 41.49, clientes: 26.6, fecha: "2023-01-01" },
+  { id: 139, patente: "OBP980", propietario: "FC", cd: "OVIEDO", operador: "FC", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 8000, viajes: 95, flete: 615102, ocupacion: 41.49, clientes: 26.6, fecha: "2023-01-01" },
+  { id: 140, patente: "AAKG012", propietario: "FC", cd: "OVIEDO", operador: "FC", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 8000, viajes: 95, flete: 1104039, ocupacion: 38.1, clientes: 29.6, fecha: "2023-01-01" },
+  { id: 141, patente: "AAOU657", propietario: "FC", cd: "OVIEDO", operador: "FC", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 2500, viajes: 96, flete: 469871, ocupacion: 29.77, clientes: 35.7, fecha: "2023-01-01" },
+  { id: 142, patente: "AALV455", propietario: "TRYLON S.A - EMPRESA", cd: "LIBERACION", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 98, flete: 864334, ocupacion: 31.58, clientes: 31.6, fecha: "2023-01-01" },
+  { id: 143, patente: "AALV452", propietario: "TRYLON S.A - EMPRESA", cd: "LIBERACION", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 107, flete: 472831, ocupacion: 39.62, clientes: 35.1, fecha: "2023-01-01" },
+  { id: 144, patente: "AALV454", propietario: "TRYLON S.A - EMPRESA", cd: "LIBERACION", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 107, flete: 659819, ocupacion: 37.41, clientes: 35.6, fecha: "2023-01-01" },
+  { id: 145, patente: "AALV457", propietario: "TRYLON S.A - EMPRESA", cd: "LIBERACION", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 112, flete: 2068257, ocupacion: 26.95, clientes: 28.4, fecha: "2023-01-01" },
+  { id: 146, patente: "WHAL523", propietario: "TRYLON S.A - EMPRESA", cd: "LIBERACION", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 10, flete: 1090909, ocupacion: 30.32, clientes: 20.4, fecha: "2023-01-01" },
+  { id: 147, patente: "AOT886", propietario: "HERIB GONZALEZ HG", cd: "CDE", operador: "HERIB GONZALEZ HG", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 104, flete: 720096, ocupacion: 36.52, clientes: 46.5, fecha: "2023-01-01" },
+  { id: 148, patente: "AALU699", propietario: "HERIB GONZALEZ HG", cd: "CDE", operador: "HERIB GONZALEZ HG", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 97, flete: 715154, ocupacion: 41.76, clientes: 41.8, fecha: "2023-01-01" },
+  { id: 149, patente: "CCN232", propietario: "HERIB GONZALEZ HG", cd: "CDE", operador: "HERIB GONZALEZ HG", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 89, flete: 896910, ocupacion: 36.8, clientes: 40.2, fecha: "2023-01-01" },
+  { id: 150, patente: "AAGK598", propietario: "LOGISTICA ZARATE E.A.S", cd: "CDE", operador: "LOGISTICA ZARATE E.A.S", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 8000, viajes: 95, flete: 818181, ocupacion: 69.2, clientes: 23.1, fecha: "2023-01-01" },
+  { id: 151, patente: "AAEE065", propietario: "MAXIMINO TORRES", cd: "CDE", operador: "MAXIMINO TORRES", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 104, flete: 511805, ocupacion: 44.86, clientes: 40.7, fecha: "2023-01-01" },
+  { id: 152, patente: "AACH454", propietario: "TORIBIA GONZALEZ", cd: "CDE", operador: "TORIBIA GONZALEZ", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 1500, viajes: 95, flete: 413088, ocupacion: 37.28, clientes: 26.2, fecha: "2023-01-01" },
+  { id: 153, patente: "AAFB626", propietario: "LOGISTICA ZARATE E.A.S", cd: "CDE", operador: "LOGISTICA ZARATE E.A.S", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 4, flete: 818181, ocupacion: 47.28, clientes: 35.8, fecha: "2023-01-01" },
+  { id: 154, patente: "AASK289", propietario: "LOGISTICA ZARATE E.A.S", cd: "CDE", operador: "LOGISTICA ZARATE E.A.S", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 99, flete: 754555, ocupacion: 36.93, clientes: 31.6, fecha: "2023-01-01" },
+  { id: 155, patente: "AAIK434", propietario: "LOGISTICA ZARATE E.A.S", cd: "CDE", operador: "LOGISTICA ZARATE E.A.S", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 99, flete: 595267, ocupacion: 39.87, clientes: 22.7, fecha: "2023-01-01" },
+  { id: 156, patente: "BEL601", propietario: "TORIBIA GONZALEZ", cd: "CDE", operador: "TORIBIA GONZALEZ", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 92, flete: 551083, ocupacion: 42.25, clientes: 40.0, fecha: "2023-01-01" },
+  { id: 157, patente: "AANY440", propietario: "TORIBIA GONZALEZ", cd: "CDE", operador: "TORIBIA GONZALEZ", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 99, flete: 512477, ocupacion: 44.0, clientes: 26.4, fecha: "2023-01-01" },
+  { id: 158, patente: "AAJH469", propietario: "ESTEFANY BAEZ", cd: "CDE", operador: "ESTEFANY BAEZ", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 72, flete: 448799, ocupacion: 46.13, clientes: 20.1, fecha: "2023-01-01" },
+  { id: 159, patente: "BYU363", propietario: "LIGISTICA FD - FELIPE DOMINGUEZ", cd: "CDE", operador: "LIGISTICA FD - FELIPE DOMINGUEZ", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 39, flete: 439783, ocupacion: 46.24, clientes: 17.3, fecha: "2023-01-01" },
+  { id: 160, patente: "NBB768", propietario: "LIGISTICA FD - FELIPE DOMINGUEZ", cd: "CDE", operador: "LIGISTICA FD - FELIPE DOMINGUEZ", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 5000, viajes: 104, flete: 529131, ocupacion: 39.74, clientes: 44.8, fecha: "2023-01-01" },
+  { id: 161, patente: "NBF498", propietario: "GRACIELA BENITEZ", cd: "CDE", operador: "GRACIELA BENITEZ", tipo: "UNIPERSONAL", estado: "ACTIVO", capacidad: 10000, viajes: 107, flete: 654545, ocupacion: 52.96, clientes: 2.5, fecha: "2023-01-01" },
+  { id: 162, patente: "CBV468", propietario: "RONALD SOLINGER GAMARRA", cd: "CDE", operador: "RONALD SOLINGER GAMARRA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 97, flete: 810440, ocupacion: 40.68, clientes: 42.1, fecha: "2023-01-01" },
+  { id: 163, patente: "HBP999", propietario: "RONALD SOLINGER GAMARRA", cd: "CDE", operador: "RONALD SOLINGER GAMARRA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 91, flete: 814705, ocupacion: 45.79, clientes: 25.8, fecha: "2023-01-01" },
+  { id: 164, patente: "AUUC005", propietario: "RONALD SOLINGER GAMARRA", cd: "CDE", operador: "RONALD SOLINGER GAMARRA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 78, flete: 816899, ocupacion: 48.25, clientes: 18.1, fecha: "2023-01-01" },
+  { id: 165, patente: "AANT679", propietario: "RONALD SOLINGER GAMARRA", cd: "CDE", operador: "RONALD SOLINGER GAMARRA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 95, flete: 771789, ocupacion: 54.44, clientes: 11.1, fecha: "2023-01-01" },
+  { id: 166, patente: "AAUB949", propietario: "RONALD SOLINGER GAMARRA", cd: "CDE", operador: "RONALD SOLINGER GAMARRA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 35, flete: 786649, ocupacion: 53.51, clientes: 8.2, fecha: "2023-01-01" },
+  { id: 167, patente: "AAUB927", propietario: "RONALD SOLINGER GAMARRA", cd: "CDE", operador: "RONALD SOLINGER GAMARRA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 87, flete: 815088, ocupacion: 46.66, clientes: 18.7, fecha: "2023-01-01" },
+  { id: 168, patente: "AALJ510", propietario: "HERIB GONZALEZ HG", cd: "KATUETE", operador: "HERIB GONZALEZ HG", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 110, flete: 1217170, ocupacion: 38.49, clientes: 22.8, fecha: "2023-01-01" },
+  { id: 169, patente: "AALU689", propietario: "HERIB GONZALEZ HG", cd: "KATUETE", operador: "HERIB GONZALEZ HG", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 93, flete: 1114169, ocupacion: 20.61, clientes: 21.9, fecha: "2023-01-01" },
+  { id: 170, patente: "AAKI653", propietario: "HERIB GONZALEZ HG", cd: "KATUETE", operador: "HERIB GONZALEZ HG", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 25, flete: 954400, ocupacion: 26.55, clientes: 36.8, fecha: "2023-01-01" },
+  { id: 171, patente: "CCC263", propietario: "RONALD SOLINGER GAMARRA", cd: "KATUETE", operador: "RONALD SOLINGER GAMARRA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 91, flete: 793826, ocupacion: 39.49, clientes: 25.9, fecha: "2023-01-01" },
+  { id: 172, patente: "AAOY657", propietario: "BROUMARKETS S.A", cd: "MAUX", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 89, flete: 824252, ocupacion: 35.68, clientes: 15.8, fecha: "2023-01-01" },
+  { id: 173, patente: "AAOY652", propietario: "BROUMARKETS S.A", cd: "MAUX", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 96, flete: 616083, ocupacion: 35.87, clientes: 19.5, fecha: "2023-01-01" },
+  { id: 174, patente: "AASS280", propietario: "BROUMARKETS S.A", cd: "MAUX", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 4, flete: 529086, ocupacion: 11.59, clientes: 14.5, fecha: "2023-01-01" },
+  { id: 175, patente: "AAMZ788", propietario: "TRYLON S.A - EMPRESA", cd: "SAN IGNACIO", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 107, flete: 943025, ocupacion: 38.93, clientes: 44.4, fecha: "2023-01-01" },
+  { id: 176, patente: "AALG597", propietario: "TRYLON S.A - EMPRESA", cd: "SAN IGNACIO", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 105, flete: 1176784, ocupacion: 38.01, clientes: 36.5, fecha: "2023-01-01" },
+  { id: 177, patente: "BPE066", propietario: "TRYLON S.A - EMPRESA", cd: "SAN IGNACIO", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 100, flete: 802666, ocupacion: 51.99, clientes: 43.4, fecha: "2023-01-01" },
+  { id: 178, patente: "AAOJ674", propietario: "TRYLON S.A - EMPRESA", cd: "SAN IGNACIO", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 74, flete: 1157219, ocupacion: 57.13, clientes: 36.3, fecha: "2023-01-01" },
+  { id: 179, patente: "AANK371", propietario: "TRYLON S.A - EMPRESA", cd: "ENCARNACION", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 106, flete: 442334, ocupacion: 37.57, clientes: 50.1, fecha: "2023-01-01" },
+  { id: 180, patente: "AANK362", propietario: "TRYLON S.A - EMPRESA", cd: "ENCARNACION", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 54, flete: 1821912, ocupacion: 43.17, clientes: 20.5, fecha: "2023-01-01" },
+  { id: 181, patente: "AAOJ682", propietario: "TRYLON S.A - EMPRESA", cd: "ENCARNACION", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 104, flete: 1545878, ocupacion: 33.68, clientes: 43.8, fecha: "2023-01-01" },
+  { id: 182, patente: "AALI919", propietario: "TRYLON S.A - EMPRESA", cd: "ENCARNACION", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 106, flete: 365307, ocupacion: 62.44, clientes: 53.6, fecha: "2023-01-01" },
+  { id: 183, patente: "AAOJ674", propietario: "TRYLON S.A - EMPRESA", cd: "ENCARNACION", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 8000, viajes: 74, flete: 1157219, ocupacion: 57.13, clientes: 36.3, fecha: "2023-01-01" },
+  { id: 184, patente: "AAUC005", propietario: "RONALD SOLINGER GAMARRA", cd: "ENCARNACION", operador: "RONALD SOLINGER GAMARRA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 56, flete: 719480, ocupacion: 48.98, clientes: 8.3, fecha: "2023-01-01" },
+  { id: 185, patente: "AAUB927", propietario: "RONALD SOLINGER GAMARRA", cd: "ENCARNACION", operador: "RONALD SOLINGER GAMARRA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 5000, viajes: 87, flete: 815088, ocupacion: 46.66, clientes: 18.7, fecha: "2023-01-01" },
+  { id: 186, patente: "AAUC005", propietario: "RONALD SOLINGER GAMARRA", cd: "ENCARNACION", operador: "RONALD SOLINGER GAMARRA", tipo: "EMPRESA", estado: "ACTIVO", capacidad: 2500, viajes: 56, flete: 719480, ocupacion: 48.98, clientes: 8.3, fecha: "2023-01-01" },
+  { id: 187, patente: "BCE033", propietario: "Cicinio R. Cabrera Duarte", cd: "MATRIZ", operador: "Cicinio R. Cabrera Duarte", tipo: "UNIPERSONAL", estado: "INACTIVO", capacidad: 10000, viajes: 4, flete: 608410, ocupacion: 39.15, clientes: 44.5, fecha: "2023-01-01" },
+  { id: 188, patente: "AAOI961", propietario: "Derlis Ramón Ramirez", cd: "MATRIZ", operador: "Derlis Ramón Ramirez", tipo: "UNIPERSONAL", estado: "INACTIVO", capacidad: 5000, viajes: 1, flete: 654545, ocupacion: 28.66, clientes: 1.0, fecha: "2023-01-01" },
+  { id: 189, patente: "BLF181", propietario: "Derlis Ramón Ramirez", cd: "MATRIZ", operador: "Derlis Ramón Ramirez", tipo: "UNIPERSONAL", estado: "INACTIVO", capacidad: 5000, viajes: 20, flete: 554545, ocupacion: 66.91, clientes: 1.0, fecha: "2023-01-01" },
+  { id: 190, patente: "BPU340", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 1, flete: 700000, ocupacion: 58.06, clientes: 4.0, fecha: "2023-01-01" },
+  { id: 191, patente: "HGB613", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 80, flete: 700000, ocupacion: 52.03, clientes: 1.8, fecha: "2023-01-01" },
+  { id: 192, patente: "AACP863", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 1, flete: 700000, ocupacion: 57.55, clientes: 3.0, fecha: "2023-01-01" },
+  { id: 193, patente: "BET466", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 80, flete: 700000, ocupacion: 50.91, clientes: 1.9, fecha: "2023-01-01" },
+  { id: 194, patente: "AANS180", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 76, flete: 700000, ocupacion: 52.28, clientes: 1.9, fecha: "2023-01-01" },
+  { id: 195, patente: "HCU001", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 1, flete: 700000, ocupacion: 54.98, clientes: 3.0, fecha: "2023-01-01" },
+  { id: 196, patente: "BSV146", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 1, flete: 700000, ocupacion: 55.27, clientes: 3.0, fecha: "2023-01-01" },
+  { id: 197, patente: "HFL878", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 78, flete: 700000, ocupacion: 50.93, clientes: 1.9, fecha: "2023-01-01" },
+  { id: 198, patente: "AABO415", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 1, flete: 700000, ocupacion: 65.32, clientes: 3.0, fecha: "2023-01-01" },
+  { id: 199, patente: "AAEZ224", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 77, flete: 700000, ocupacion: 51.1, clientes: 1.9, fecha: "2023-01-01" },
+  { id: 200, patente: "AAAY050", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 1, flete: 700000, ocupacion: 48.48, clientes: 3.0, fecha: "2023-01-01" },
+  { id: 201, patente: "AJR028", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 56, flete: 700000, ocupacion: 47.06, clientes: 1.7, fecha: "2023-01-01" },
+  { id: 202, patente: "BYB202", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 47, flete: 700000, ocupacion: 49.18, clientes: 1.8, fecha: "2023-01-01" },
+  { id: 203, patente: "HES972", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 1, flete: 700000, ocupacion: 38.84, clientes: 4.0, fecha: "2023-01-01" },
+  { id: 204, patente: "ALD697", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 1, flete: 700000, ocupacion: 41.93, clientes: 3.0, fecha: "2023-01-01" },
+  { id: 205, patente: "BUY781", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 19, flete: 700000, ocupacion: 56.74, clientes: 2.2, fecha: "2023-01-01" },
+  { id: 206, patente: "BROU118", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 12, flete: 700000, ocupacion: 55.55, clientes: 2.2, fecha: "2023-01-01" },
+  { id: 207, patente: "BROU119", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 2, flete: 700000, ocupacion: 52.69, clientes: 2.5, fecha: "2023-01-01" },
+  { id: 208, patente: "AAHZ983", propietario: "TRYLON S.A - EMPRESA", cd: "MATRIZ", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 8, flete: 1531451, ocupacion: 47.65, clientes: 1.1, fecha: "2023-01-01" },
+  { id: 209, patente: "AABF656", propietario: "TRYLON S.A - EMPRESA", cd: "MATRIZ", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 13, flete: 1842254, ocupacion: 45.17, clientes: 1.8, fecha: "2023-01-01" },
+  { id: 210, patente: "AAIR622", propietario: "TRYLON S.A - EMPRESA", cd: "MATRIZ", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 1, flete: 0, ocupacion: 18.29, clientes: 7.0, fecha: "2023-01-01" },
+  { id: 211, patente: "AABF655", propietario: "TRYLON S.A - EMPRESA", cd: "MATRIZ", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 1, flete: 11212332, ocupacion: 31.49, clientes: 2.0, fecha: "2023-01-01" },
+  { id: 212, patente: "BJR234", propietario: "HERIB GONZALEZ HG", cd: "MATRIZ", operador: "HERIB GONZALEZ HG", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 38, flete: 746973, ocupacion: 43.93, clientes: 1.1, fecha: "2023-01-01" },
+  { id: 213, patente: "SLE123", propietario: "Sergio Escauriza", cd: "MATRIZ", operador: "Sergio Escauriza", tipo: "UNIPERSONAL", estado: "INACTIVO", capacidad: 5000, viajes: 1, flete: 1200000, ocupacion: 40.28, clientes: 1.0, fecha: "2023-01-01" },
+  { id: 214, patente: "AAOJ679", propietario: "TRYLON S.A - EMPRESA", cd: "MATRIZ", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 10000, viajes: 99, flete: 713355, ocupacion: 45.72, clientes: 11.4, fecha: "2023-01-01" },
+  { id: 215, patente: "AAOI961", propietario: "TRYLON S.A - EMPRESA", cd: "MATRIZ", operador: "TRYLON S.A - EMPRESA", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 1, flete: 654545, ocupacion: 28.66, clientes: 1.0, fecha: "2023-01-01" },
+  { id: 216, patente: "HEE167", propietario: "SERINCAR S.A", cd: "MATRIZ", operador: "SERINCAR S.A", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 14000, viajes: 48, flete: 727272, ocupacion: 43.6, clientes: 9.1, fecha: "2023-01-01" },
+  { id: 217, patente: "ACK319", propietario: "SIDER CARGO SRL", cd: "MATRIZ", operador: "SIDER CARGO SRL", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 10000, viajes: 25, flete: 1084974, ocupacion: 68.4, clientes: 1.0, fecha: "2023-01-01" },
+  { id: 218, patente: "ACK127", propietario: "SIDER CARGO SRL", cd: "MATRIZ", operador: "SIDER CARGO SRL", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 1, flete: 1084974, ocupacion: 33.33, clientes: 1.0, fecha: "2023-01-01" },
+  { id: 219, patente: "XAS859", propietario: "SIDER CARGO SRL", cd: "MATRIZ", operador: "SIDER CARGO SRL", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 80, flete: 715859, ocupacion: 34.19, clientes: 43.5, fecha: "2023-01-01" },
+  { id: 220, patente: "AAIR622", propietario: "SIDER CARGO SRL", cd: "MATRIZ", operador: "SIDER CARGO SRL", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 10000, viajes: 1, flete: 0, ocupacion: 18.29, clientes: 7.0, fecha: "2023-01-01" },
+  { id: 221, patente: "BZO739", propietario: "SIDER CARGO SRL", cd: "MATRIZ", operador: "SIDER CARGO SRL", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 1, flete: 892680, ocupacion: 37.26, clientes: 4.0, fecha: "2023-01-01" },
+  { id: 222, patente: "AABF655", propietario: "SIDER CARGO SRL", cd: "MATRIZ", operador: "SIDER CARGO SRL", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 1, flete: 11212332, ocupacion: 31.49, clientes: 2.0, fecha: "2023-01-01" },
+  { id: 223, patente: "AAIR622", propietario: "SERINCAR S.A", cd: "MATRIZ", operador: "SERINCAR S.A", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 8000, viajes: 1, flete: 0, ocupacion: 18.29, clientes: 7.0, fecha: "2023-01-01" },
+  { id: 224, patente: "ILS160", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 79, flete: 483660, ocupacion: 46.26, clientes: 6.7, fecha: "2023-01-01" },
+  { id: 225, patente: "BVA548", propietario: "SERINCAR S.A", cd: "MATRIZ", operador: "SERINCAR S.A", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 24, flete: 727272, ocupacion: 41.09, clientes: 9.1, fecha: "2023-01-01" },
+  { id: 226, patente: "AAAY050", propietario: "DARESOL E.A.S", cd: "MATRIZ", operador: "DARESOL E.A.S", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 1, flete: 700000, ocupacion: 48.48, clientes: 3.0, fecha: "2023-01-01" },
+  { id: 227, patente: "AANS180", propietario: "DARESOL E.A.S", cd: "MATRIZ", operador: "DARESOL E.A.S", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 76, flete: 700000, ocupacion: 52.28, clientes: 1.9, fecha: "2023-01-01" },
+  { id: 228, patente: "SEMI1", propietario: "DARESOL E.A.S", cd: "MATRIZ", operador: "DARESOL E.A.S", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 1, flete: 600000, ocupacion: 34.63, clientes: 3.0, fecha: "2023-01-01" },
+  { id: 229, patente: "AAHZ983", propietario: "DARESOL E.A.S", cd: "MATRIZ", operador: "DARESOL E.A.S", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 8000, viajes: 8, flete: 1531451, ocupacion: 47.65, clientes: 1.1, fecha: "2023-01-01" },
+  { id: 230, patente: "BXS187", propietario: "TRANSP GARCIA", cd: "MATRIZ", operador: "TRANSP GARCIA", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 65, flete: 709090, ocupacion: 52.19, clientes: 2.8, fecha: "2023-01-01" },
+  { id: 231, patente: "BUY781", propietario: "DARESOL E.A.S", cd: "MATRIZ", operador: "DARESOL E.A.S", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 19, flete: 700000, ocupacion: 56.74, clientes: 2.2, fecha: "2023-01-01" },
+  { id: 232, patente: "HAA388", propietario: "DARESOL E.A.S", cd: "MATRIZ", operador: "DARESOL E.A.S", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 5000, viajes: 11, flete: 700000, ocupacion: 31.2, clientes: 3.4, fecha: "2023-01-01" },
+  { id: 233, patente: "AFJ043", propietario: "Ovidio Dominguez", cd: "MATRIZ", operador: "Ovidio Dominguez", tipo: "UNIPERSONAL", estado: "INACTIVO", capacidad: 5000, viajes: 6, flete: 520126, ocupacion: 48.69, clientes: 20.2, fecha: "2023-01-01" },
+  { id: 234, patente: "AAIR622", propietario: "Ovidio Dominguez", cd: "MATRIZ", operador: "Ovidio Dominguez", tipo: "UNIPERSONAL", estado: "INACTIVO", capacidad: 5000, viajes: 1, flete: 0, ocupacion: 18.29, clientes: 7.0, fecha: "2023-01-01" },
+  { id: 235, patente: "BHP928", propietario: "Ovidio Dominguez", cd: "MATRIZ", operador: "Ovidio Dominguez", tipo: "UNIPERSONAL", estado: "INACTIVO", capacidad: 5000, viajes: 13, flete: 463526, ocupacion: 58.51, clientes: 5.6, fecha: "2023-01-01" },
+  { id: 236, patente: "BJL597", propietario: "Ñande Logistica", cd: "MATRIZ", operador: "Ñande Logistica", tipo: "UNIPERSONAL", estado: "INACTIVO", capacidad: 5000, viajes: 1, flete: 599189, ocupacion: 12.45, clientes: 2.0, fecha: "2023-01-01" },
+  { id: 237, patente: "AADS230", propietario: "Ñande Logistica", cd: "MATRIZ", operador: "Ñande Logistica", tipo: "UNIPERSONAL", estado: "INACTIVO", capacidad: 10000, viajes: 2, flete: 643099, ocupacion: 45.53, clientes: 47.0, fecha: "2023-01-01" },
+  { id: 238, patente: "BUL099", propietario: "Ovidio Dominguez", cd: "MATRIZ", operador: "Ovidio Dominguez", tipo: "UNIPERSONAL", estado: "INACTIVO", capacidad: 5000, viajes: 22, flete: 654545, ocupacion: 46.01, clientes: 3.1, fecha: "2023-01-01" },
+  { id: 239, patente: "AFJ043", propietario: "Cristina Jara Franco", cd: "MATRIZ", operador: "Cristina Jara Franco", tipo: "UNIPERSONAL", estado: "INACTIVO", capacidad: 5000, viajes: 6, flete: 520126, ocupacion: 48.69, clientes: 20.2, fecha: "2023-01-01" },
+  { id: 240, patente: "AABF655", propietario: "Cristina Jara Franco", cd: "MATRIZ", operador: "Cristina Jara Franco", tipo: "UNIPERSONAL", estado: "INACTIVO", capacidad: 10000, viajes: 1, flete: 11212332, ocupacion: 31.49, clientes: 2.0, fecha: "2023-01-01" },
+  { id: 241, patente: "AAES178", propietario: "Cristina Jara Franco", cd: "MATRIZ", operador: "Cristina Jara Franco", tipo: "UNIPERSONAL", estado: "INACTIVO", capacidad: 5000, viajes: 29, flete: 654545, ocupacion: 47.18, clientes: 3.3, fecha: "2023-01-01" },
+  { id: 242, patente: "BHP928", propietario: "Cristina Jara Franco", cd: "MATRIZ", operador: "Cristina Jara Franco", tipo: "UNIPERSONAL", estado: "INACTIVO", capacidad: 10000, viajes: 13, flete: 463526, ocupacion: 58.51, clientes: 5.6, fecha: "2023-01-01" },
+  { id: 243, patente: "DAE641", propietario: "Cristina Jara Franco", cd: "MATRIZ", operador: "Cristina Jara Franco", tipo: "UNIPERSONAL", estado: "INACTIVO", capacidad: 10000, viajes: 28, flete: 654545, ocupacion: 44.05, clientes: 1.8, fecha: "2023-01-01" },
+  { id: 244, patente: "BCS662", propietario: "Cristina Jara Franco", cd: "MATRIZ", operador: "Cristina Jara Franco", tipo: "UNIPERSONAL", estado: "INACTIVO", capacidad: 5000, viajes: 28, flete: 654545, ocupacion: 30.19, clientes: 5.8, fecha: "2023-01-01" },
+  { id: 245, patente: "HDT011", propietario: "BROUMARKETS S.A", cd: "MATRIZ", operador: "BROUMARKETS S.A", tipo: "EMPRESA", estado: "INACTIVO", capacidad: 10000, viajes: 1, flete: 0, ocupacion: 73.08, clientes: 1.0, fecha: "2023-01-01" },
+  { id: 246, patente: "AAES178", propietario: "Ovidio Dominguez", cd: "MATRIZ", operador: "Ovidio Dominguez", tipo: "UNIPERSONAL", estado: "INACTIVO", capacidad: 10000, viajes: 29, flete: 654545, ocupacion: 47.18, clientes: 3.3, fecha: "2023-01-01" }
+];
+
+/* =====================================================
+ * STORAGE — con fallback graceful
+ * ===================================================== */
+function checkStorage() {
+  try {
+    const test = '__test__';
+    localStorage.setItem(test, test);
+    localStorage.removeItem(test);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function saveState() {
+  if (!state.storageAvailable) return;
+  try {
+    const payload = { records: state.records, lastSaved: new Date().toISOString() };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    state.lastSaved = payload.lastSaved;
+    updateLastSaved();
+  } catch (e) {
+    console.error('Error guardando:', e);
+    showToast('No se pudo guardar localmente', 'error');
+  }
+}
+
+function loadState() {
+  if (!state.storageAvailable) return false;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    if (parsed && Array.isArray(parsed.records)) {
+      state.records = parsed.records;
+      state.lastSaved = parsed.lastSaved;
+      return true;
+    }
+  } catch (e) {
+    console.error('Error cargando:', e);
+  }
+  return false;
+}
+
+function updateLastSaved() {
+  const el = document.getElementById('last-saved');
+  if (!el) return;
+  if (state.lastSaved) {
+    const d = new Date(state.lastSaved);
+    el.textContent = d.toLocaleString('es-PY', { dateStyle: 'short', timeStyle: 'short' });
+  } else {
+    el.textContent = 'Nunca';
+  }
+}
+
+/* =====================================================
+ * TEMA
+ * ===================================================== */
+function applyTheme(theme) {
+  if (theme === 'dark') document.documentElement.classList.add('dark');
+  else document.documentElement.classList.remove('dark');
+  if (state.storageAvailable) {
+    try { localStorage.setItem(THEME_KEY, theme); } catch(e) {}
+  }
+  const label = document.getElementById('theme-label');
+  if (label) label.textContent = theme === 'dark' ? 'Modo claro' : 'Modo oscuro';
+  // Re-render charts to apply colors
+  setTimeout(() => { if (state.activeTab === 'overview' || state.activeTab === 'graficos') renderCharts(); }, 50);
+}
+
+function toggleTheme() {
+  const isDark = document.documentElement.classList.contains('dark');
+  applyTheme(isDark ? 'light' : 'dark');
+}
+
+function initTheme() {
+  let theme = 'light';
+  if (state.storageAvailable) {
+    try { theme = localStorage.getItem(THEME_KEY) || 'light'; } catch(e) {}
+  }
+  applyTheme(theme);
+}
+
+/* =====================================================
+ * NAVEGACIÓN
+ * ===================================================== */
+function setActiveTab(tab) {
+  state.activeTab = tab;
+  document.querySelectorAll('.tab-section').forEach(s => s.classList.add('hidden'));
+  document.getElementById('tab-' + tab).classList.remove('hidden');
+
+  document.querySelectorAll('.nav-item').forEach(b => {
+    if (b.dataset.tab === tab) {
+      b.classList.add('bg-indigo-50','dark:bg-indigo-900/40','text-indigo-700','dark:text-indigo-400');
+      b.classList.remove('text-slate-700','dark:text-slate-300');
+    } else {
+      b.classList.remove('bg-indigo-50','dark:bg-indigo-900/40','text-indigo-700','dark:text-indigo-400');
+      b.classList.add('text-slate-700','dark:text-slate-300');
+    }
+  });
+
+  const titles = { overview: 'Overview', datos: 'Datos', graficos: 'Gráficos', config: 'Configuración' };
+  document.getElementById('page-title').textContent = titles[tab];
+
+  // Render specifics
+  if (tab === 'overview') { renderKPIs(); renderCharts(); }
+  if (tab === 'datos') renderTable();
+  if (tab === 'graficos') renderCharts();
+
+  // close mobile sidebar
+  document.getElementById('sidebar').classList.add('-translate-x-full');
+  document.getElementById('sidebar-backdrop').classList.add('hidden');
+}
+
+/* =====================================================
+ * CRUD
+ * ===================================================== */
+function newId() {
+  return state.records.length === 0 ? 1 : Math.max(...state.records.map(r => r.id)) + 1;
+}
+
+function openAddModal() {
+  document.getElementById('modal-title').textContent = 'Agregar camión';
+  document.getElementById('modal-form').reset();
+  document.getElementById('form-id').value = '';
+  document.getElementById('form-fecha').value = new Date().toISOString().split('T')[0];
+  document.getElementById('form-estado').value = 'ACTIVO';
+  document.getElementById('form-tipo').value = 'UNIPERSONAL';
+  document.getElementById('form-cd').value = 'MATRIZ';
+  document.getElementById('modal').classList.remove('hidden');
+}
+
+function openEditModal(id) {
+  const rec = state.records.find(r => r.id === id);
+  if (!rec) return;
+  document.getElementById('modal-title').textContent = 'Editar camión · ' + rec.patente;
+  document.getElementById('form-id').value = rec.id;
+  document.getElementById('form-patente').value = rec.patente || '';
+  document.getElementById('form-propietario').value = rec.propietario || '';
+  document.getElementById('form-cd').value = rec.cd || 'MATRIZ';
+  document.getElementById('form-operador').value = rec.operador || '';
+  document.getElementById('form-tipo').value = rec.tipo || 'UNIPERSONAL';
+  document.getElementById('form-estado').value = rec.estado || 'ACTIVO';
+  document.getElementById('form-capacidad').value = rec.capacidad || '';
+  document.getElementById('form-viajes').value = rec.viajes || '';
+  document.getElementById('form-flete').value = rec.flete || '';
+  document.getElementById('form-ocupacion').value = rec.ocupacion || '';
+  document.getElementById('form-clientes').value = rec.clientes || '';
+  document.getElementById('form-fecha').value = rec.fecha || '';
+  document.getElementById('modal').classList.remove('hidden');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.add('hidden');
+}
+
+function handleFormSubmit(e) {
+  e.preventDefault();
+  const id = document.getElementById('form-id').value;
+  const data = {
+    patente: document.getElementById('form-patente').value.trim().toUpperCase(),
+    propietario: document.getElementById('form-propietario').value.trim(),
+    cd: document.getElementById('form-cd').value,
+    operador: document.getElementById('form-operador').value.trim(),
+    tipo: document.getElementById('form-tipo').value,
+    estado: document.getElementById('form-estado').value,
+    capacidad: parseInt(document.getElementById('form-capacidad').value) || 0,
+    viajes: parseInt(document.getElementById('form-viajes').value) || 0,
+    flete: parseInt(document.getElementById('form-flete').value) || 0,
+    ocupacion: parseFloat(document.getElementById('form-ocupacion').value) || 0,
+    clientes: parseFloat(document.getElementById('form-clientes').value) || 0,
+    fecha: document.getElementById('form-fecha').value || new Date().toISOString().split('T')[0]
+  };
+
+  if (id) {
+    const idx = state.records.findIndex(r => r.id === parseInt(id));
+    if (idx >= 0) {
+      state.records[idx] = { ...state.records[idx], ...data };
+      showToast('Camión actualizado', 'success');
+    }
+  } else {
+    state.records.push({ id: newId(), ...data });
+    showToast('Camión agregado', 'success');
+  }
+
+  saveState();
+  closeModal();
+  refreshAll();
+}
+
+function deleteRecord(id) {
+  const rec = state.records.find(r => r.id === id);
+  if (!rec) return;
+  showConfirm(
+    'Eliminar camión',
+    `¿Eliminar el registro de patente ${rec.patente}? Esta acción no se puede deshacer.`,
+    () => {
+      state.records = state.records.filter(r => r.id !== id);
+      saveState();
+      refreshAll();
+      showToast('Camión eliminado', 'success');
+    }
+  );
+}
+
+// Edición inline de campos
+function updateField(id, field, value) {
+  const rec = state.records.find(r => r.id === id);
+  if (!rec) return;
+  let parsed = value;
+  if (['capacidad','viajes','flete'].includes(field)) parsed = parseInt(value) || 0;
+  if (['ocupacion','clientes'].includes(field)) parsed = parseFloat(value) || 0;
+  rec[field] = parsed;
+  saveState();
+  // Update KPIs sin re-render completo de tabla
+  renderKPIs();
+}
+
+/* =====================================================
+ * FILTROS
+ * ===================================================== */
+function getFilteredRecords() {
+  return state.records.filter(r => {
+    if (state.filters.cd && r.cd !== state.filters.cd) return false;
+    if (state.filters.tipo && r.tipo !== state.filters.tipo) return false;
+    if (state.filters.estado && r.estado !== state.filters.estado) return false;
+    if (state.filters.search) {
+      const q = state.filters.search.toLowerCase();
+      const hay = [r.patente, r.propietario, r.operador, r.cd].join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function clearFilters() {
+  state.filters = { search: '', cd: '', tipo: '', estado: '' };
+  document.getElementById('filter-search').value = '';
+  document.getElementById('filter-cd').value = '';
+  document.getElementById('filter-tipo').value = '';
+  document.getElementById('filter-estado').value = '';
+  renderTable();
+}
+
+/* =====================================================
+ * RENDER · TABLA
+ * ===================================================== */
+function fmtMoney(n) { return new Intl.NumberFormat('es-PY').format(n || 0); }
+function fmtNum(n, d = 1) { return (n || 0).toFixed(d); }
+
+function renderTable() {
+  const body = document.getElementById('tabla-body');
+  const filtered = getFilteredRecords();
+
+  document.getElementById('filter-count').textContent = filtered.length;
+  document.getElementById('filter-total').textContent = state.records.length;
+  document.getElementById('record-count').textContent = state.records.length + ' registros';
+
+  if (filtered.length === 0) {
+    body.innerHTML = '';
+    document.getElementById('empty-state').classList.remove('hidden');
+    return;
+  }
+  document.getElementById('empty-state').classList.add('hidden');
+
+  body.innerHTML = filtered.map(r => {
+    const estadoBadge = r.estado === 'ACTIVO'
+      ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Activo</span>'
+      : '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"><span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>Inactivo</span>';
+    const tipoBadge = r.tipo === 'UNIPERSONAL'
+      ? '<span class="inline-flex px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">UNI</span>'
+      : '<span class="inline-flex px-2 py-0.5 rounded-md text-xs font-medium bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400">EMP</span>';
+
+    return `<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition slide-in">
+      <td class="px-4 py-3 font-mono text-xs font-semibold text-slate-900 dark:text-white">${r.patente}</td>
+      <td class="px-4 py-3 text-slate-700 dark:text-slate-300">
+        <span class="editable-cell" contenteditable="true" onblur="updateField(${r.id}, 'propietario', this.textContent.trim())" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">${r.propietario}</span>
+      </td>
+      <td class="px-4 py-3 text-slate-700 dark:text-slate-300">${r.cd}</td>
+      <td class="px-4 py-3 text-slate-700 dark:text-slate-300">${r.operador}</td>
+      <td class="px-4 py-3">${tipoBadge}</td>
+      <td class="px-4 py-3 text-right font-mono text-xs text-slate-700 dark:text-slate-300">
+        <span class="editable-cell" contenteditable="true" onblur="updateField(${r.id}, 'capacidad', this.textContent.trim())" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">${r.capacidad}</span>
+      </td>
+      <td class="px-4 py-3 text-right font-mono text-xs text-slate-700 dark:text-slate-300">
+        <span class="editable-cell" contenteditable="true" onblur="updateField(${r.id}, 'viajes', this.textContent.trim())" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">${r.viajes}</span>
+      </td>
+      <td class="px-4 py-3 text-right font-mono text-xs text-slate-700 dark:text-slate-300">
+        <span class="editable-cell" contenteditable="true" onblur="updateField(${r.id}, 'flete', this.textContent.trim())" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">${fmtMoney(r.flete)}</span>
+      </td>
+      <td class="px-4 py-3 text-right font-mono text-xs text-slate-700 dark:text-slate-300">
+        <span class="editable-cell" contenteditable="true" onblur="updateField(${r.id}, 'ocupacion', this.textContent.trim())" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">${fmtNum(r.ocupacion, 1)}</span>
+      </td>
+      <td class="px-4 py-3 text-center">${estadoBadge}</td>
+      <td class="px-4 py-3">
+        <div class="flex items-center justify-center gap-1">
+          <button onclick="openEditModal(${r.id})" class="p-1.5 text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded transition" title="Editar">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+          </button>
+          <button onclick="deleteRecord(${r.id})" class="p-1.5 text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition" title="Eliminar">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+/* =====================================================
+ * RENDER · KPIs
+ * ===================================================== */
+function renderKPIs() {
+  const total = state.records.length;
+  const activos = state.records.filter(r => r.estado === 'ACTIVO');
+  const inactivos = state.records.filter(r => r.estado === 'INACTIVO');
+  const viables = activos.filter(r => r.flete > 0 && r.viajes > 0);
+
+  document.getElementById('kpi-total').textContent = total;
+  document.getElementById('kpi-activos').textContent = activos.length;
+  document.getElementById('kpi-inactivos').textContent = inactivos.length;
+
+  if (viables.length > 0) {
+    const fleteAvg = viables.reduce((s, r) => s + r.flete, 0) / viables.length;
+    const ocupAvg = viables.reduce((s, r) => s + r.ocupacion, 0) / viables.length;
+    const cliAvg  = viables.reduce((s, r) => s + r.clientes, 0) / viables.length;
+    document.getElementById('kpi-flete').textContent = fmtMoney(Math.round(fleteAvg));
+    document.getElementById('kpi-ocupacion').textContent = fmtNum(ocupAvg, 1);
+    document.getElementById('kpi-clientes').textContent = fmtNum(cliAvg, 1);
+  } else {
+    document.getElementById('kpi-flete').textContent = '0';
+    document.getElementById('kpi-ocupacion').textContent = '0';
+    document.getElementById('kpi-clientes').textContent = '0';
+  }
+
+  // UNI vs EMP block
+  const uni = viables.filter(r => r.tipo === 'UNIPERSONAL');
+  const emp = viables.filter(r => r.tipo === 'EMPRESA');
+  document.getElementById('uni-count').textContent = uni.length;
+  document.getElementById('emp-count').textContent = emp.length;
+
+  if (uni.length > 0) {
+    const fU = uni.reduce((s,r)=>s+r.flete,0)/uni.length;
+    document.getElementById('uni-flete').textContent = 'Gs. ' + fmtMoney(Math.round(fU));
+    document.getElementById('uni-ocup').textContent = fmtNum(uni.reduce((s,r)=>s+r.ocupacion,0)/uni.length,1)+'%';
+    document.getElementById('uni-cli').textContent = fmtNum(uni.reduce((s,r)=>s+r.clientes,0)/uni.length,1);
+  }
+  if (emp.length > 0) {
+    const fE = emp.reduce((s,r)=>s+r.flete,0)/emp.length;
+    document.getElementById('emp-flete').textContent = 'Gs. ' + fmtMoney(Math.round(fE));
+    document.getElementById('emp-ocup').textContent = fmtNum(emp.reduce((s,r)=>s+r.ocupacion,0)/emp.length,1)+'%';
+    document.getElementById('emp-cli').textContent = fmtNum(emp.reduce((s,r)=>s+r.clientes,0)/emp.length,1);
+  }
+  if (uni.length > 0 && emp.length > 0) {
+    const fU = uni.reduce((s,r)=>s+r.flete,0)/uni.length;
+    const fE = emp.reduce((s,r)=>s+r.flete,0)/emp.length;
+    const brecha = (fE/fU - 1) * 100;
+    document.getElementById('overview-brecha').textContent = (brecha >= 0 ? '+' : '') + fmtNum(brecha, 1) + '%';
+    document.getElementById('overview-extra').textContent = fmtMoney(Math.round(fE - fU));
+  }
+
+  document.getElementById('record-count').textContent = total + ' registros';
+}
+
+/* =====================================================
+ * GRÁFICOS · Chart.js
+ * ===================================================== */
+function chartColors() {
+  const isDark = document.documentElement.classList.contains('dark');
+  return {
+    text: isDark ? '#cbd5e1' : '#475569',
+    grid: isDark ? 'rgba(148,163,184,0.15)' : 'rgba(148,163,184,0.25)',
+    uni: '#10b981',
+    emp: '#6366f1',
+    amber: '#f59e0b',
+    palette: ['#6366f1','#10b981','#f59e0b','#ec4899','#06b6d4','#8b5cf6','#ef4444','#14b8a6']
+  };
+}
+
+function destroyChart(key) {
+  if (state.charts[key]) {
+    state.charts[key].destroy();
+    delete state.charts[key];
+  }
+}
+
+function renderCharts() {
+  const c = chartColors();
+  const activos = state.records.filter(r => r.estado === 'ACTIVO');
+
+  Chart.defaults.color = c.text;
+  Chart.defaults.borderColor = c.grid;
+  Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+
+  // Cursor pointer al pasar sobre elementos clickeables
+  const hoverCursor = (evt, elements) => {
+    evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+  };
+
+  // === MINI: distribución por CD ===
+  const elMiniCd = document.getElementById('chart-mini-cd');
+  if (elMiniCd) {
+    destroyChart('miniCd');
+    const cds = [...new Set(state.records.map(r => r.cd))].sort();
+    const data = cds.map(cd => state.records.filter(r => r.cd === cd && r.estado === 'ACTIVO').length);
+    state.charts.miniCd = new Chart(elMiniCd, {
+      type: 'bar',
+      data: {
+        labels: cds,
+        datasets: [{ label: 'Camiones activos', data, backgroundColor: c.emp, borderRadius: 6 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        onHover: hoverCursor,
+        onClick: (evt, els) => {
+          if (!els.length) return;
+          const cd = cds[els[0].index];
+          const recs = activos.filter(r => r.cd === cd);
+          showDrillDown('CD ' + cd, recs.length + ' camiones activos en este centro de distribución', recs);
+        },
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, grid: { color: c.grid } }, x: { grid: { display: false } } }
+      }
+    });
+  }
+
+  // === MINI: estado ===
+  const elMiniEstado = document.getElementById('chart-mini-estado');
+  if (elMiniEstado) {
+    destroyChart('miniEstado');
+    const a = state.records.filter(r => r.estado === 'ACTIVO').length;
+    const i = state.records.filter(r => r.estado === 'INACTIVO').length;
+    state.charts.miniEstado = new Chart(elMiniEstado, {
+      type: 'doughnut',
+      data: {
+        labels: ['Activos', 'Inactivos'],
+        datasets: [{ data: [a, i], backgroundColor: ['#10b981','#94a3b8'], borderWidth: 0 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        cutout: '65%',
+        onHover: hoverCursor,
+        onClick: (evt, els) => {
+          if (!els.length) return;
+          const estado = els[0].index === 0 ? 'ACTIVO' : 'INACTIVO';
+          const recs = state.records.filter(r => r.estado === estado);
+          showDrillDown('Estado: ' + estado, recs.length + ' camiones', recs);
+        },
+        plugins: { legend: { position: 'bottom', labels: { padding: 12 } } }
+      }
+    });
+  }
+
+  // === GRÁFICOS · Flete por CD UNI vs EMP ===
+  const elFleteCd = document.getElementById('chart-flete-cd');
+  if (elFleteCd) {
+    destroyChart('fleteCd');
+    const cds = [...new Set(activos.map(r => r.cd))].sort();
+    const dataUni = cds.map(cd => {
+      const filt = activos.filter(r => r.cd === cd && r.tipo === 'UNIPERSONAL' && r.flete > 0);
+      return filt.length ? Math.round(filt.reduce((s,r) => s+r.flete,0)/filt.length) : 0;
+    });
+    const dataEmp = cds.map(cd => {
+      const filt = activos.filter(r => r.cd === cd && r.tipo === 'EMPRESA' && r.flete > 0);
+      return filt.length ? Math.round(filt.reduce((s,r) => s+r.flete,0)/filt.length) : 0;
+    });
+    state.charts.fleteCd = new Chart(elFleteCd, {
+      type: 'bar',
+      data: {
+        labels: cds,
+        datasets: [
+          { label: 'Unipersonal', data: dataUni, backgroundColor: c.uni, borderRadius: 6 },
+          { label: 'Empresa', data: dataEmp, backgroundColor: c.emp, borderRadius: 6 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        onHover: hoverCursor,
+        onClick: (evt, els) => {
+          if (!els.length) return;
+          const el = els[0];
+          const cd = cds[el.index];
+          const tipo = el.datasetIndex === 0 ? 'UNIPERSONAL' : 'EMPRESA';
+          const recs = activos.filter(r => r.cd === cd && r.tipo === tipo && r.flete > 0);
+          showDrillDown(cd + ' · ' + tipo, recs.length + ' camiones · flete promedio Gs. ' + fmtMoney(Math.round(recs.reduce((s,r)=>s+r.flete,0)/(recs.length||1))), recs);
+        },
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: {
+            callbacks: { label: (ctx) => `${ctx.dataset.label}: Gs. ${fmtMoney(ctx.parsed.y)}` }
+          }
+        },
+        scales: {
+          y: { beginAtZero: true, grid: { color: c.grid }, ticks: { callback: v => 'Gs. ' + fmtMoney(v) } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  }
+
+  // === GRÁFICOS · Clientes/viaje barra ===
+  const elCli = document.getElementById('chart-clientes');
+  if (elCli) {
+    destroyChart('clientes');
+    const uniCli = activos.filter(r => r.tipo === 'UNIPERSONAL' && r.clientes > 0);
+    const empCli = activos.filter(r => r.tipo === 'EMPRESA' && r.clientes > 0);
+    const uniAvg = uniCli.length ? uniCli.reduce((s,r)=>s+r.clientes,0)/uniCli.length : 0;
+    const empAvg = empCli.length ? empCli.reduce((s,r)=>s+r.clientes,0)/empCli.length : 0;
+    state.charts.clientes = new Chart(elCli, {
+      type: 'bar',
+      data: {
+        labels: ['Unipersonal','Empresa'],
+        datasets: [{
+          label: 'Clientes promedio por viaje',
+          data: [uniAvg, empAvg],
+          backgroundColor: [c.uni, c.emp],
+          borderRadius: 8
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true, maintainAspectRatio: false,
+        onHover: hoverCursor,
+        onClick: (evt, els) => {
+          if (!els.length) return;
+          const tipo = els[0].index === 0 ? 'UNIPERSONAL' : 'EMPRESA';
+          const recs = activos.filter(r => r.tipo === tipo && r.clientes > 0);
+          showDrillDown(tipo + ' · clientes por viaje', recs.length + ' camiones · promedio ' + fmtNum(recs.reduce((s,r)=>s+r.clientes,0)/(recs.length||1),1) + ' cli/viaje', recs);
+        },
+        plugins: { legend: { display: false } },
+        scales: { x: { beginAtZero: true, grid: { color: c.grid } }, y: { grid: { display: false } } }
+      }
+    });
+  }
+
+  // === GRÁFICOS · Composición de flota (doughnut) ===
+  const elComp = document.getElementById('chart-composicion');
+  if (elComp) {
+    destroyChart('comp');
+    const operadores = {};
+    activos.forEach(r => { operadores[r.operador] = (operadores[r.operador] || 0) + 1; });
+    // Si hay muchos unipersonales, agrupar
+    const sorted = Object.entries(operadores).sort((a,b)=>b[1]-a[1]);
+    const top = sorted.slice(0, 8);
+    const topNames = top.map(t => t[0]);
+    const otros = sorted.slice(8).reduce((s, [_, v]) => s + v, 0);
+    if (otros > 0) top.push(['Otros', otros]);
+    state.charts.comp = new Chart(elComp, {
+      type: 'doughnut',
+      data: {
+        labels: top.map(t => t[0]),
+        datasets: [{ data: top.map(t => t[1]), backgroundColor: c.palette, borderWidth: 0 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        cutout: '55%',
+        onHover: hoverCursor,
+        onClick: (evt, els) => {
+          if (!els.length) return;
+          const label = top[els[0].index][0];
+          let recs;
+          if (label === 'Otros') {
+            recs = activos.filter(r => !topNames.includes(r.operador));
+            showDrillDown('Otros operadores', recs.length + ' camiones fuera del top 8', recs);
+          } else {
+            recs = activos.filter(r => r.operador === label);
+            showDrillDown('Operador: ' + label, recs.length + ' camiones activos', recs);
+          }
+        },
+        plugins: { legend: { position: 'right', labels: { boxWidth: 12, padding: 8, font: { size: 11 } } } }
+      }
+    });
+  }
+
+  // === GRÁFICOS · scatter Ocupación vs Flete ===
+  const elScat = document.getElementById('chart-scatter');
+  if (elScat) {
+    destroyChart('scatter');
+    // Embeber el id del registro en cada punto para drill-down preciso
+    const uniPoints = activos.filter(r => r.tipo === 'UNIPERSONAL' && r.flete > 0 && r.ocupacion > 0).map(r => ({ x: r.ocupacion, y: r.flete, _id: r.id }));
+    const empPoints = activos.filter(r => r.tipo === 'EMPRESA' && r.flete > 0 && r.ocupacion > 0).map(r => ({ x: r.ocupacion, y: r.flete, _id: r.id }));
+    state.charts.scatter = new Chart(elScat, {
+      type: 'scatter',
+      data: {
+        datasets: [
+          { label: 'Unipersonal', data: uniPoints, backgroundColor: c.uni, pointRadius: 6, pointHoverRadius: 9 },
+          { label: 'Empresa', data: empPoints, backgroundColor: c.emp, pointRadius: 6, pointHoverRadius: 9 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        onHover: hoverCursor,
+        onClick: (evt, els) => {
+          if (!els.length) return;
+          // Reunir todos los puntos bajo el clic (puede haber varios solapados)
+          const ids = els.map(e => {
+            const ds = state.charts.scatter.data.datasets[e.datasetIndex];
+            return ds.data[e.index]._id;
+          });
+          const recs = state.records.filter(r => ids.includes(r.id));
+          const title = recs.length === 1 ? ('Camión ' + recs[0].patente) : (recs.length + ' camiones seleccionados');
+          showDrillDown(title, 'Punto(s) del scatter · ocupación vs flete', recs);
+        },
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: { callbacks: { label: (ctx) => `Ocup: ${ctx.parsed.x}% · Flete: Gs. ${fmtMoney(ctx.parsed.y)}` } }
+        },
+        scales: {
+          x: { title: { display: true, text: 'Ocupación (%)' }, grid: { color: c.grid } },
+          y: { title: { display: true, text: 'Flete (Gs.)' }, grid: { color: c.grid }, ticks: { callback: v => 'Gs. ' + fmtMoney(v) } }
+        }
+      }
+    });
+  }
+}
+
+/* =====================================================
+ * DRILL-DOWN · Panel de detalle al tocar un gráfico
+ * ===================================================== */
+function showDrillDown(title, subtitle, records) {
+  if (!records || records.length === 0) {
+    showToast('Sin registros para esta selección', 'info');
+    return;
+  }
+  document.getElementById('dd-title').textContent = title;
+  document.getElementById('dd-subtitle').textContent = subtitle;
+
+  // Resumen de la selección
+  const viables = records.filter(r => r.flete > 0);
+  const fleteAvg = viables.length ? Math.round(viables.reduce((s,r)=>s+r.flete,0)/viables.length) : 0;
+  const ocupAvg = viables.length ? viables.reduce((s,r)=>s+r.ocupacion,0)/viables.length : 0;
+  const cliAvg = viables.length ? viables.reduce((s,r)=>s+r.clientes,0)/viables.length : 0;
+  const fleteTotal = records.reduce((s,r)=>s+(r.flete*r.viajes||0),0);
+
+  document.getElementById('dd-summary').innerHTML = `
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
+        <p class="text-xs text-slate-500 dark:text-slate-400">Camiones</p>
+        <p class="text-lg font-bold text-slate-900 dark:text-white">${records.length}</p>
+      </div>
+      <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
+        <p class="text-xs text-slate-500 dark:text-slate-400">Flete promedio</p>
+        <p class="text-lg font-bold text-slate-900 dark:text-white">Gs. ${fmtMoney(fleteAvg)}</p>
+      </div>
+      <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
+        <p class="text-xs text-slate-500 dark:text-slate-400">Ocup. promedio</p>
+        <p class="text-lg font-bold text-slate-900 dark:text-white">${fmtNum(ocupAvg,1)}%</p>
+      </div>
+      <div class="p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
+        <p class="text-xs text-slate-500 dark:text-slate-400">Cli/viaje prom.</p>
+        <p class="text-lg font-bold text-slate-900 dark:text-white">${fmtNum(cliAvg,1)}</p>
+      </div>
+    </div>`;
+
+  // Tabla de detalle (ordenada por flete desc)
+  const sorted = [...records].sort((a,b) => b.flete - a.flete);
+  const rows = sorted.map(r => {
+    const tipoBadge = r.tipo === 'UNIPERSONAL'
+      ? '<span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">UNI</span>'
+      : '<span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400">EMP</span>';
+    const estadoDot = r.estado === 'ACTIVO'
+      ? '<span class="w-1.5 h-1.5 inline-block rounded-full bg-emerald-500"></span>'
+      : '<span class="w-1.5 h-1.5 inline-block rounded-full bg-slate-400"></span>';
+    return `<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+      <td class="px-3 py-2 font-mono text-xs font-semibold text-slate-900 dark:text-white whitespace-nowrap">${r.patente}</td>
+      <td class="px-3 py-2 text-xs text-slate-700 dark:text-slate-300 whitespace-nowrap">${r.propietario}</td>
+      <td class="px-3 py-2 text-xs text-slate-600 dark:text-slate-400">${r.cd}</td>
+      <td class="px-3 py-2">${tipoBadge}</td>
+      <td class="px-3 py-2 text-right text-xs font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">${fmtMoney(r.capacidad)}</td>
+      <td class="px-3 py-2 text-right text-xs font-mono text-slate-700 dark:text-slate-300">${r.viajes}</td>
+      <td class="px-3 py-2 text-right text-xs font-mono font-semibold text-slate-900 dark:text-white whitespace-nowrap">${fmtMoney(r.flete)}</td>
+      <td class="px-3 py-2 text-right text-xs font-mono text-slate-700 dark:text-slate-300">${fmtNum(r.ocupacion,1)}%</td>
+      <td class="px-3 py-2 text-right text-xs font-mono text-slate-700 dark:text-slate-300">${fmtNum(r.clientes,1)}</td>
+      <td class="px-3 py-2 text-center">${estadoDot}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('dd-table-body').innerHTML = rows;
+  document.getElementById('dd-count').textContent = records.length + (records.length === 1 ? ' registro' : ' registros');
+
+  // Guardar selección actual para exportar
+  state.drillSelection = sorted;
+
+  document.getElementById('drilldown').classList.remove('hidden');
+}
+
+function closeDrillDown() {
+  document.getElementById('drilldown').classList.add('hidden');
+  state.drillSelection = null;
+}
+
+function exportDrillDown() {
+  if (!state.drillSelection || !state.drillSelection.length) return;
+  const headers = ['patente','propietario','cd','operador','tipo','estado','capacidad','viajes','flete','ocupacion','clientes'];
+  const csv = [headers.join(',')].concat(
+    state.drillSelection.map(r => headers.map(h => {
+      const v = r[h] ?? '';
+      return typeof v === 'string' && v.includes(',') ? `"${v}"` : v;
+    }).join(','))
+  ).join('\n');
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'seleccion_grafico.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Selección exportada a CSV', 'success');
+}
+
+/* =====================================================
+ * FILTROS · Setup dropdowns
+ * ===================================================== */
+function populateFilters() {
+  const cds = [...new Set(state.records.map(r => r.cd))].sort();
+  const sel = document.getElementById('filter-cd');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Todos</option>' + cds.map(cd => `<option value="${cd}">${cd}</option>`).join('');
+  sel.value = current;
+}
+
+/* =====================================================
+ * IMPORT / EXPORT
+ * ===================================================== */
+function exportData() {
+  const payload = { exported: new Date().toISOString(), records: state.records };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `flota_export_${new Date().toISOString().split('T')[0]}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Datos exportados', 'success');
+}
+
+function handleImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const parsed = JSON.parse(ev.target.result);
+      if (!parsed.records || !Array.isArray(parsed.records)) {
+        showToast('Archivo no válido', 'error');
+        return;
+      }
+      showConfirm(
+        'Importar datos',
+        `¿Reemplazar los ${state.records.length} registros actuales con los ${parsed.records.length} del archivo?`,
+        () => {
+          state.records = parsed.records;
+          saveState();
+          refreshAll();
+          showToast(`${parsed.records.length} registros importados`, 'success');
+        }
+      );
+    } catch (err) {
+      showToast('Error al leer archivo', 'error');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+function resetData() {
+  showConfirm(
+    'Reiniciar datos',
+    '¿Seguro que querés eliminar todos los registros y restaurar los datos de demostración? Esta acción no se puede deshacer.',
+    () => {
+      state.records = JSON.parse(JSON.stringify(SEED_DATA));
+      saveState();
+      refreshAll();
+      showToast('Datos restaurados', 'success');
+    }
+  );
+}
+
+/* =====================================================
+ * UI Helpers · Toast + Confirm
+ * ===================================================== */
+function showToast(msg, type = 'info') {
+  const colors = {
+    success: 'bg-emerald-600',
+    error: 'bg-red-600',
+    info: 'bg-slate-700'
+  };
+  const icons = {
+    success: '✓',
+    error: '✕',
+    info: 'ℹ'
+  };
+  const id = 't' + Date.now();
+  const html = `<div id="${id}" class="toast ${colors[type]} text-white px-4 py-2.5 rounded-lg shadow-lg flex items-center gap-2 text-sm font-medium">
+    <span class="font-bold">${icons[type]}</span> ${msg}
+  </div>`;
+  document.getElementById('toast-container').insertAdjacentHTML('beforeend', html);
+  setTimeout(() => {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+  }, 3000);
+}
+
+let confirmCallback = null;
+function showConfirm(title, text, onConfirm) {
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-text').textContent = text;
+  document.getElementById('confirm').classList.remove('hidden');
+  confirmCallback = onConfirm;
+}
+function cancelConfirm() {
+  document.getElementById('confirm').classList.add('hidden');
+  confirmCallback = null;
+}
+
+/* =====================================================
+ * REFRESH ALL
+ * ===================================================== */
+function refreshAll() {
+  populateFilters();
+  if (state.activeTab === 'datos') renderTable();
+  if (state.activeTab === 'overview' || state.activeTab === 'graficos') {
+    renderKPIs();
+    renderCharts();
+  }
+  renderKPIs(); // siempre actualizar contador
+}
+
+/* =====================================================
+ * INIT
+ * ===================================================== */
+function init() {
+  state.storageAvailable = checkStorage();
+
+  // Status visible en config
+  const statusEl = document.getElementById('storage-status');
+  if (statusEl) {
+    statusEl.textContent = state.storageAvailable ? '✓ localStorage activo' : '⚠ No disponible (modo memoria)';
+    statusEl.classList.add(state.storageAvailable ? 'text-emerald-600' : 'text-amber-600');
+  }
+
+  // Cargar tema
+  initTheme();
+
+  // Cargar datos
+  if (!loadState()) {
+    state.records = JSON.parse(JSON.stringify(SEED_DATA));
+    saveState();
+  }
+  updateLastSaved();
+
+  // Setup eventos
+  document.querySelectorAll('.nav-item').forEach(b => {
+    b.addEventListener('click', () => setActiveTab(b.dataset.tab));
+  });
+
+  document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+
+  document.getElementById('modal-form').addEventListener('submit', handleFormSubmit);
+
+  document.getElementById('filter-search').addEventListener('input', (e) => {
+    state.filters.search = e.target.value;
+    renderTable();
+  });
+  document.getElementById('filter-cd').addEventListener('change', (e) => {
+    state.filters.cd = e.target.value;
+    renderTable();
+  });
+  document.getElementById('filter-tipo').addEventListener('change', (e) => {
+    state.filters.tipo = e.target.value;
+    renderTable();
+  });
+  document.getElementById('filter-estado').addEventListener('change', (e) => {
+    state.filters.estado = e.target.value;
+    renderTable();
+  });
+
+  document.getElementById('import-file').addEventListener('change', handleImport);
+
+  document.getElementById('confirm-ok').addEventListener('click', () => {
+    if (confirmCallback) confirmCallback();
+    cancelConfirm();
+  });
+
+  // Sidebar mobile
+  document.getElementById('sidebar-toggle').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.toggle('-translate-x-full');
+    document.getElementById('sidebar-backdrop').classList.toggle('hidden');
+  });
+  document.getElementById('sidebar-backdrop').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.add('-translate-x-full');
+    document.getElementById('sidebar-backdrop').classList.add('hidden');
+  });
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'd') {
+      e.preventDefault();
+      toggleTheme();
+    }
+    if (e.key === 'Escape') {
+      closeModal();
+      cancelConfirm();
+      closeDrillDown();
+    }
+  });
+
+  // Tab inicial
+  populateFilters();
+  setActiveTab('overview');
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>
